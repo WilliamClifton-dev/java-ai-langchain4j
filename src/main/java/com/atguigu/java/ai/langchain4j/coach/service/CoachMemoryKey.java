@@ -5,10 +5,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
-final class CoachMemoryKey {
+public final class CoachMemoryKey {
     private CoachMemoryKey() { }
 
-    static String forOwner(String userId, String conversationId) {
+    public static String forOwner(String userId, String conversationId) {
         if (userId == null || userId.isBlank() || conversationId == null
                 || conversationId.isBlank()) {
             throw new IllegalArgumentException("Owner and conversation are required");

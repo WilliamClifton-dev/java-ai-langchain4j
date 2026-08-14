@@ -44,6 +44,14 @@ public final class ModelCircuitBreaker {
         if (permit.probe || ++failures >= failureThreshold) open();
     }
 
+    public synchronized void onCancellation(Permit permit) {
+        if (!permit.resolve()) return;
+        if (permit.probe) {
+            state = State.OPEN;
+            reopenAt = clock.instant();
+        }
+    }
+
     private void open() {
         state = State.OPEN;
         reopenAt = clock.instant().plus(openDuration);
