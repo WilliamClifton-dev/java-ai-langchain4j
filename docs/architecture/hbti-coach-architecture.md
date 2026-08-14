@@ -29,6 +29,7 @@ The target architecture is delivered incrementally. A capability is considered i
 | Daily tracking | Flyway V7 typed metric/nutrition/training facts, profile-time-zone date policy, hashed idempotency, owned APIs and deterministic daily aggregation | implemented |
 | Weekly review | Flyway V8 immutable review versions, deterministic trend/adherence policy, missing-data gates, bounded proposals and owned APIs | implemented |
 | Authorized coach tools | six typed LangChain4j tools, JWT-bound invocation context, server-derived write idempotency, owner-scoped services and fail-closed tests | implemented |
+| Reviewed knowledge retrieval | Flyway V9 source/version/chunk lifecycle, publication filtering, deterministic bounded retrieval, citation metadata and evaluation fixtures | implemented |
 
 Operational SLOs below remain release targets until Task 23 records load, recovery, and rollback evidence. Passing unit tests does not by itself make the service production or enterprise grade.
 
@@ -131,7 +132,7 @@ sequenceDiagram
 | Planning | `weight_plan`, `weight_plan_version` | one aggregate per user; one authoritative active-version pointer; immutable target payload per version |
 | Tracking | `daily_metric`, `training_log`, `nutrition_log`, `weekly_review` | user/date/type uniqueness where applicable |
 | Coach | `coach_conversation`, `coach_message` | server-derived owner namespace; `(conversation_id, sequence_no)` unique; relational owner FK pending Task 18 lifecycle work |
-| Knowledge | `knowledge_document`, `knowledge_chunk` | source and content version traceable |
+| Knowledge | `knowledge_document`, `knowledge_document_version`, `knowledge_chunk` | unique source, immutable content version, ordered chunks and reviewed lifecycle |
 | Governance | `audit_event`, `prompt_version`, `model_policy` | append-only security-relevant history |
 
 All user-owned tables include an ownership path that can be constrained in the query. Public identifiers are non-sequential UUIDs; internal numeric keys may be used only where they are never exposed.
@@ -202,9 +203,15 @@ Flyway V7 adds daily execution facts. `daily_metric` stores optional kilograms, 
 
 Flyway V8 adds immutable `weekly_review` versions. Policy `DETERMINISTIC_WEEKLY_REVIEW_V1` reads exactly seven local dates, calculates an ordered least-squares weekly weight trend, reports observation coverage separately from adherence, and keeps missing averages nullable. Fewer than three weight days or four nutrition days cannot produce an energy adjustment. With sufficient data and at least 75% logged-energy adherence, a trend outside the active plan guardrail can propose at most `+100` or `-100 kcal/day`; the proposal never mutates or activates a plan. The generation transaction takes the same owner account lock used by plan and tracking writes, snapshots the active plan and ordered facts, and hashes those inputs. Identical inputs replay the existing review; late facts or a changed active plan create a new version without rewriting history. ADR-008 records these rules.
 
+Flyway V9 separates stable knowledge sources, immutable document versions, and ordered chunks. Each source key is unique; a source/content SHA-256 pair is idempotent, while changed content creates the next version. Versions move from `DRAFT` to `PUBLISHED` or `RETIRED`, and publishing one version retires the previously published version for that source in the same transaction. Public knowledge tables contain reviewed reference material and provenance only, never user profile, assessment, tracking, conversation, or token data.
+
 ## Knowledge And RAG
 
-Only reviewed sources enter the published index. Ingestion records source URL, publisher, retrieval date, content hash, reviewer, locale, and lifecycle status. Retrieval is user-data isolated and returns citations. Missing evidence results in a qualified response, not fabricated authority.
+Only reviewed sources enter the published index. Ingestion records source URL, publisher, retrieval date, content hash, reviewer, locale, and lifecycle status. The current ingestion service is an internal operator boundary; no public upload or arbitrary URL-fetch endpoint exists. Source text remains untrusted and cannot change system policy, tool authorization, or SQL filters.
+
+The L1 retriever performs deterministic local lexical scoring over Chinese Han bigrams and normalized alphanumeric terms. SQL filters `PUBLISHED` versions and exact locale before reading at most 500 ordered candidate chunks; Java applies a `0.20` match threshold and returns at most five passages. Every passage carries source key, title, HTTPS URL, publisher, locale, version number and content hash in LangChain4j metadata, and the same provenance is prepended to the model-visible text. Invalid query, locale, or result-limit input fails closed, and below-threshold retrieval returns no evidence.
+
+This implementation is deliberately external-service-free and suitable for the bounded L1 corpus. It is not a vector index, semantic search system, or evidence of vector-scale throughput. Concurrent first ingestion of the same new source is protected by the database unique constraint but one caller may receive a conflict rather than a transparent replay; an operator retry resolves to the stored version. Task 23 must measure corpus size, recall, latency, and concurrency before changing that boundary. ADR-010 records the decision.
 
 RAG release gates include retrieval recall, citation correctness, groundedness, prompt-injection resistance, and stale-document behavior on a versioned evaluation set.
 
