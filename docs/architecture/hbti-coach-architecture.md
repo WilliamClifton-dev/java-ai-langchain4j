@@ -25,6 +25,7 @@ The target architecture is delivered incrementally. A capability is considered i
 | HBTI definition and scoring | Flyway V4 published bilingual definition, source provenance, read-only catalog and JavaScript parity fixtures | implemented |
 | HBTI result history | owned transactional attempts/answers/scores, hashed idempotency keys, current/history API and isolation tests | implemented |
 | Deterministic calculations | versioned BMI/BMR/TDEE formulas, conservative target ranges and stale-screening fail-closed policy | implemented |
+| Versioned plan lifecycle | owned immutable target snapshots, guarded state transitions, hashed idempotency and transactional active-version replacement | implemented |
 
 Operational SLOs below remain release targets until Task 23 records load, recovery, and rollback evidence. Passing unit tests does not by itself make the service production or enterprise grade.
 
@@ -124,7 +125,7 @@ sequenceDiagram
 | Identity | `user_account`, `refresh_token` | unique normalized email; hashed secrets; token rotation |
 | Profile | `user_profile`, `safety_screening` | one current profile per user; immutable screening versions |
 | Assessment | `assessment_definition`, `assessment_item`, `assessment_attempt`, `assessment_answer`, `assessment_score` | definition version immutable after publication |
-| Planning | `weight_plan`, `weight_plan_version`, `plan_target` | one active version per plan; explicit activation transaction |
+| Planning | `weight_plan`, `weight_plan_version` | one aggregate per user; one authoritative active-version pointer; immutable target payload per version |
 | Tracking | `daily_metric`, `training_log`, `nutrition_log`, `weekly_review` | user/date/type uniqueness where applicable |
 | Coach | `coach_conversation`, `coach_message` | ownership FK; `(conversation_id, sequence_no)` unique |
 | Knowledge | `knowledge_document`, `knowledge_chunk` | source and content version traceable |
@@ -189,6 +190,8 @@ Model output is untrusted. Tools use typed schemas, server-derived user IDs, bou
 Definition `1.0.0` and scoring rule `1.0.0` are frozen by Flyway V4 from `hbti-prototype` commit `bdd1e9f...`. Sixteen ordered 1-5 items cover `FS`, `HC`, `RW`, and `ND`. Scores use the prototype's normalized directional mean, integer percentage rounding, and left-pole tie rule. The public domain contract accepts an answer list so duplicate item IDs remain detectable. Missing, unknown, duplicate, and out-of-range answers fail before scoring. Optional biomarker values do not modify HBTI results. ADR-004 records the full compatibility decision.
 
 Flyway V5 stores completed user-owned attempts, immutable answer facts, and ordered dimension scores. Submission locks the authenticated account row, checks the user-scoped SHA-256 idempotency digest, validates and scores through the published definition, then commits all rows in one transaction. A replay with the same canonical payload returns the original result; key reuse with different content is a conflict. Current and paginated history queries include `user_id` in SQL, and API requests contain no trusted owner or score fields.
+
+Flyway V6 stores one `weight_plan` aggregate per user and append-only target payloads in `weight_plan_version`. A version snapshots the profile update timestamp, screening identity/version, HBTI attempt, formula and policy versions, BMI/BMR/TDEE, energy range and weekly-change guardrail. Lifecycle metadata moves through `DRAFT -> VALIDATED -> CONFIRMED -> ACTIVE -> REPLACED`; payload fields never change. `weight_plan.active_version_id` is the authoritative current pointer, and the owner-scoped activation transaction only assigns a version loaded from that aggregate. Its foreign key uses `ON DELETE SET NULL` so later user-data deletion does not form a restrictive cycle. Creation and activation lock the authenticated account row, store only SHA-256 idempotency-key digests, and replace the prior ACTIVE version in the same transaction. Every transition rechecks current profile, screening, assessment, formula and target-policy provenance and fails closed when they changed. ADR-006 records this lifecycle decision.
 
 ## Knowledge And RAG
 
