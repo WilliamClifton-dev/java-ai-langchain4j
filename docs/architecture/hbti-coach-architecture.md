@@ -10,6 +10,20 @@
 
 This document supersedes the historical medical-to-HBTI execution route. Historical decisions remain available for context, but new implementation must follow this architecture and accepted ADRs.
 
+## Implementation Evidence
+
+The target architecture is delivered incrementally. A capability is considered implemented only when code, migrations, automated tests, and the execution ledger agree.
+
+| Capability | Current evidence | Status |
+|---|---|---|
+| Architecture baseline | product spec, current architecture, MySQL ADR and 24-task plan | implemented |
+| Durable persistence | Flyway V1/V2, MySQL runtime configuration and H2 migration tests | implemented |
+| Ordered coach memory | transactional per-conversation replacement and rollback tests | implemented |
+| Identity credentials | normalized unique email, BCrypt cost 12, bounded input and hashed-password persistence tests | implemented |
+| Authentication sessions | access/refresh issue, rotation, reuse detection and logout tests | planned in Task 5 |
+
+Operational SLOs below remain release targets until Task 23 records load, recovery, and rollback evidence. Passing unit tests does not by itself make the service production or enterprise grade.
+
 ## Architecture Drivers
 
 1. User health-adjacent data requires explicit ownership, minimization, deletion, and auditability.
@@ -113,6 +127,8 @@ sequenceDiagram
 | Governance | `audit_event`, `prompt_version`, `model_policy` | append-only security-relevant history |
 
 All user-owned tables include an ownership path that can be constrained in the query. Public identifiers are non-sequential UUIDs; internal numeric keys may be used only where they are never exposed.
+
+The identity schema is introduced by Flyway V2. `user_account` stores only normalized email and an adaptive password hash. `refresh_token` stores SHA-256 token digests, family ownership, replacement links, expiry, and revocation timestamps; raw refresh tokens exist only at the delivery boundary and are never durable data.
 
 ### Chat Memory
 

@@ -40,6 +40,11 @@ class DatabaseMigrationTest {
                     Set.of("conversation_id", "sequence_no")
             )).isTrue();
             assertThat(importedKeyExists(metadata, "coach_message", "coach_conversation")).isTrue();
+            assertThat(tableExists(metadata, "user_account")).isTrue();
+            assertThat(tableExists(metadata, "refresh_token")).isTrue();
+            assertThat(uniqueIndexExists(metadata, "user_account", Set.of("normalized_email"))).isTrue();
+            assertThat(uniqueIndexExists(metadata, "refresh_token", Set.of("token_hash"))).isTrue();
+            assertThat(importedKeyExists(metadata, "refresh_token", "user_account")).isTrue();
         }
     }
 
