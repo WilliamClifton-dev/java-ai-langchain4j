@@ -18,22 +18,25 @@ public final class CoachStreamingService {
     private static final CoachStreamHandle NOOP_HANDLE = () -> { };
 
     private final CoachStreamingModel model;
+    private final CoachRateGuard rateGuard;
     private final ModelCircuitBreaker circuitBreaker;
     private final ScheduledExecutorService scheduler;
     private final Duration firstTokenTimeout;
     private final Duration totalTimeout;
     private final Semaphore concurrency;
 
-    public CoachStreamingService(CoachStreamingModel model, ModelCircuitBreaker circuitBreaker,
+    public CoachStreamingService(CoachStreamingModel model, CoachRateGuard rateGuard,
+                                 ModelCircuitBreaker circuitBreaker,
                                  ScheduledExecutorService scheduler, Duration firstTokenTimeout,
                                  Duration totalTimeout, int maxConcurrentStreams, Clock clock) {
-        if (model == null || circuitBreaker == null || scheduler == null
+        if (model == null || rateGuard == null || circuitBreaker == null || scheduler == null
                 || invalid(firstTokenTimeout) || invalid(totalTimeout)
                 || totalTimeout.compareTo(firstTokenTimeout) < 0 || maxConcurrentStreams < 1
                 || clock == null) {
             throw new IllegalArgumentException("Streaming configuration is invalid");
         }
         this.model = model;
+        this.rateGuard = rateGuard;
         this.circuitBreaker = circuitBreaker;
         this.scheduler = scheduler;
         this.firstTokenTimeout = firstTokenTimeout;
@@ -43,6 +46,12 @@ public final class CoachStreamingService {
 
     public CoachStreamSession open(CoachChatCommand command, CoachEventSink sink) {
         if (command == null || sink == null) throw new IllegalArgumentException("Stream is invalid");
+        try {
+            rateGuard.assertAllowed(command.userId());
+        } catch (CoachRateLimitExceededException exception) {
+            sink.error("MODEL_RATE_LIMITED", true);
+            return () -> { };
+        }
         if (!concurrency.tryAcquire()) {
             sink.error("MODEL_CONCURRENCY_LIMIT", true);
             return () -> { };

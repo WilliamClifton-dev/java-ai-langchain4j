@@ -5,12 +5,14 @@ import com.atguigu.java.ai.langchain4j.coach.prompt.ScenePromptRepository;
 import com.atguigu.java.ai.langchain4j.coach.streaming.CoachInvocationRegistry;
 import com.atguigu.java.ai.langchain4j.coach.streaming.CoachStreamingModel;
 import com.atguigu.java.ai.langchain4j.coach.streaming.CoachStreamingService;
+import com.atguigu.java.ai.langchain4j.coach.streaming.CoachRateGuard;
 import com.atguigu.java.ai.langchain4j.coach.streaming.CoachToolProvider;
 import com.atguigu.java.ai.langchain4j.coach.streaming.LangChain4jCoachStreamingModel;
 import com.atguigu.java.ai.langchain4j.coach.streaming.ModelCircuitBreaker;
 import com.atguigu.java.ai.langchain4j.coach.tool.CoachToolContext;
 import com.atguigu.java.ai.langchain4j.coach.tool.CoachTools;
 import com.atguigu.java.ai.langchain4j.knowledge.ReviewedKnowledgeRetriever;
+import com.atguigu.java.ai.langchain4j.infrastructure.redis.EphemeralStateStore;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.service.AiServices;
@@ -94,13 +96,21 @@ public class CoachStreamingConfig {
     }
 
     @Bean
+    CoachRateGuard coachRateGuard(
+            EphemeralStateStore store,
+            @Value("${hbti.rate.coach.maximum-requests:20}") int maximumRequests,
+            @Value("${hbti.rate.coach.window:PT1M}") Duration window) {
+        return new CoachRateGuard(store, maximumRequests, window);
+    }
+
+    @Bean
     CoachStreamingService coachStreamingService(
-            CoachStreamingModel model, ModelCircuitBreaker breaker,
+            CoachStreamingModel model, CoachRateGuard rateGuard, ModelCircuitBreaker breaker,
             ScheduledExecutorService coachStreamScheduler, Clock clock,
             @Value("${hbti.coach.streaming.first-token-timeout:PT5S}") Duration firstTokenTimeout,
             @Value("${hbti.coach.streaming.total-timeout:PT30S}") Duration totalTimeout,
             @Value("${hbti.coach.streaming.max-concurrent:5}") int maxConcurrent) {
-        return new CoachStreamingService(model, breaker, coachStreamScheduler,
+        return new CoachStreamingService(model, rateGuard, breaker, coachStreamScheduler,
                 firstTokenTimeout, totalTimeout, maxConcurrent, clock);
     }
 }

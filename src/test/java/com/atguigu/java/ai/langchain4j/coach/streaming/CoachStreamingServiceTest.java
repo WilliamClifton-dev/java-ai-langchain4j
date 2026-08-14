@@ -14,6 +14,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import com.atguigu.java.ai.langchain4j.infrastructure.redis.InMemoryEphemeralStateStore;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -117,7 +118,9 @@ class CoachStreamingServiceTest {
         Clock clock = Clock.fixed(Instant.parse("2026-08-15T00:00:00Z"), ZoneOffset.UTC);
         ModelCircuitBreaker breaker = new ModelCircuitBreaker(
                 failureThreshold, Duration.ofSeconds(30), clock);
-        return new TestHarness(new CoachStreamingService(model, breaker, scheduler,
+        CoachRateGuard rateGuard = new CoachRateGuard(
+                new InMemoryEphemeralStateStore(clock), 100, Duration.ofMinutes(1));
+        return new TestHarness(new CoachStreamingService(model, rateGuard, breaker, scheduler,
                 Duration.ofSeconds(5), Duration.ofSeconds(30), 2, clock), scheduled);
     }
 

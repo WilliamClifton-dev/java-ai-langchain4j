@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
 final class SseEmitterCoachEventSink implements CoachEventSink {
     private static final Map<String, String> ERROR_MESSAGES = Map.of(
             "MODEL_CIRCUIT_OPEN", "Coach model is temporarily unavailable",
+            "MODEL_RATE_LIMITED", "Coach request limit reached",
             "MODEL_CONCURRENCY_LIMIT", "Coach model is busy",
             "MODEL_FIRST_TOKEN_TIMEOUT", "Coach model did not respond in time",
             "MODEL_TIMEOUT", "Coach model response timed out",

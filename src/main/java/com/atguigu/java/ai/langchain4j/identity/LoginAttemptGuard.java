@@ -1,63 +1,71 @@
 package com.atguigu.java.ai.langchain4j.identity;
 
 import org.springframework.stereotype.Component;
+import com.atguigu.java.ai.langchain4j.infrastructure.redis.EphemeralStateStore;
+import com.atguigu.java.ai.langchain4j.infrastructure.redis.EphemeralStateUnavailableException;
+import com.atguigu.java.ai.langchain4j.infrastructure.redis.InMemoryEphemeralStateStore;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.HexFormat;
-import java.util.LinkedHashMap;
 import java.util.Locale;
-import java.util.Map;
 
 @Component
 public class LoginAttemptGuard {
 
     private static final int DEFAULT_MAXIMUM_FAILURES = 10;
     private static final Duration DEFAULT_WINDOW = Duration.ofMinutes(15);
-    private static final int DEFAULT_MAXIMUM_TRACKED_KEYS = 10_000;
-
-    private final Clock clock;
+    private static final String KEY_PREFIX = "rate:login:";
+    private final EphemeralStateStore store;
     private final int maximumFailures;
     private final Duration window;
-    private final int maximumTrackedKeys;
-    private final Map<String, AttemptWindow> attempts = new LinkedHashMap<>(16, 0.75f, true);
 
     @Autowired
-    public LoginAttemptGuard(Clock clock) {
-        this(clock, DEFAULT_MAXIMUM_FAILURES, DEFAULT_WINDOW, DEFAULT_MAXIMUM_TRACKED_KEYS);
+    public LoginAttemptGuard(EphemeralStateStore store,
+                             @Value("${hbti.rate.login.maximum-failures:10}") int maximumFailures,
+                             @Value("${hbti.rate.login.window:PT15M}") Duration window) {
+        if (store == null || maximumFailures < 1 || window == null
+                || window.isZero() || window.isNegative()) {
+            throw new IllegalArgumentException("Login rate configuration is invalid");
+        }
+        this.store = store;
+        this.maximumFailures = maximumFailures;
+        this.window = window;
     }
 
     LoginAttemptGuard(Clock clock, int maximumFailures, Duration window, int maximumTrackedKeys) {
-        this.clock = clock;
-        this.maximumFailures = maximumFailures;
-        this.window = window;
-        this.maximumTrackedKeys = maximumTrackedKeys;
+        this(new InMemoryEphemeralStateStore(clock), maximumFailures, window);
     }
 
-    public synchronized void assertAllowed(String key) {
-        AttemptWindow current = currentWindow(key);
-        if (current != null && current.failures() >= maximumFailures) {
+    public void assertAllowed(String key) {
+        try {
+            if (store.counter(KEY_PREFIX + key) >= maximumFailures) {
+                throw new TooManyLoginAttemptsException();
+            }
+        } catch (EphemeralStateUnavailableException exception) {
             throw new TooManyLoginAttemptsException();
         }
     }
 
-    public synchronized void recordFailure(String key) {
-        AttemptWindow current = currentWindow(key);
-        if (current == null) {
-            evictEldestIfFull();
-            attempts.put(key, new AttemptWindow(1, clock.instant()));
-            return;
+    public void recordFailure(String key) {
+        try {
+            store.incrementWithTtl(KEY_PREFIX + key, window);
+        } catch (EphemeralStateUnavailableException ignored) {
+            // The next admission check fails closed while shared state is unavailable.
         }
-        attempts.put(key, new AttemptWindow(current.failures() + 1, current.startedAt()));
     }
 
-    public synchronized void recordSuccess(String key) {
-        attempts.remove(key);
+    public void recordSuccess(String key) {
+        try {
+            store.delete(KEY_PREFIX + key);
+        } catch (EphemeralStateUnavailableException ignored) {
+            // Authentication success remains valid; the bounded key expires naturally.
+        }
     }
 
     public static String key(String remoteAddress, String email) {
@@ -71,23 +79,4 @@ public class LoginAttemptGuard {
         }
     }
 
-    private AttemptWindow currentWindow(String key) {
-        AttemptWindow current = attempts.get(key);
-        if (current != null && !clock.instant().isBefore(current.startedAt().plus(window))) {
-            attempts.remove(key);
-            return null;
-        }
-        return current;
-    }
-
-    private void evictEldestIfFull() {
-        if (attempts.size() < maximumTrackedKeys) {
-            return;
-        }
-        String eldest = attempts.keySet().iterator().next();
-        attempts.remove(eldest);
-    }
-
-    private record AttemptWindow(int failures, Instant startedAt) {
-    }
 }
