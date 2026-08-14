@@ -71,6 +71,26 @@ class DatabaseMigrationTest {
             assertThat(importedKeyExists(metadata, "assessment_attempt", "assessment_definition")).isTrue();
             assertThat(importedKeyExists(metadata, "assessment_answer", "assessment_attempt")).isTrue();
             assertThat(importedKeyExists(metadata, "assessment_score", "assessment_attempt")).isTrue();
+            assertThat(tableExists(metadata, "weight_plan")).isTrue();
+            assertThat(tableExists(metadata, "weight_plan_version")).isTrue();
+            assertThat(uniqueIndexExists(metadata, "weight_plan", Set.of("user_id"))).isTrue();
+            assertThat(uniqueIndexExists(
+                    metadata, "weight_plan_version", Set.of("plan_id", "version_no")
+            )).isTrue();
+            assertThat(uniqueIndexExists(
+                    metadata,
+                    "weight_plan_version",
+                    Set.of("plan_id", "draft_idempotency_key_hash")
+            )).isTrue();
+            assertThat(uniqueIndexExists(
+                    metadata,
+                    "weight_plan_version",
+                    Set.of("plan_id", "activation_idempotency_key_hash")
+            )).isTrue();
+            assertThat(importedKeyExists(metadata, "weight_plan", "user_account")).isTrue();
+            assertThat(importedKeyExists(metadata, "weight_plan_version", "weight_plan")).isTrue();
+            assertThat(importedKeyExists(metadata, "weight_plan_version", "safety_screening")).isTrue();
+            assertThat(importedKeyExists(metadata, "weight_plan_version", "assessment_attempt")).isTrue();
         }
     }
 
