@@ -57,21 +57,21 @@ public class AccountRegistrationService {
 
     static String normalizeEmail(String email) {
         if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("email must not be blank");
+            throw new InvalidCredentialInputException("email must not be blank");
         }
         String normalized = email.trim().toLowerCase(Locale.ROOT);
         if (normalized.length() > 254 || !normalized.contains("@")) {
-            throw new IllegalArgumentException("email is invalid");
+            throw new InvalidCredentialInputException("email is invalid");
         }
         return normalized;
     }
 
     static void validatePassword(String password) {
         if (password == null || password.length() < MINIMUM_PASSWORD_CHARACTERS) {
-            throw new IllegalArgumentException("password must contain at least 12 characters");
+            throw new InvalidCredentialInputException("password must contain at least 12 characters");
         }
         if (password.getBytes(StandardCharsets.UTF_8).length > MAXIMUM_BCRYPT_BYTES) {
-            throw new IllegalArgumentException("password must not exceed 72 UTF-8 bytes");
+            throw new InvalidCredentialInputException("password must not exceed 72 UTF-8 bytes");
         }
     }
 }
