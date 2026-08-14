@@ -45,6 +45,11 @@ class DatabaseMigrationTest {
             assertThat(uniqueIndexExists(metadata, "user_account", Set.of("normalized_email"))).isTrue();
             assertThat(uniqueIndexExists(metadata, "refresh_token", Set.of("token_hash"))).isTrue();
             assertThat(importedKeyExists(metadata, "refresh_token", "user_account")).isTrue();
+            assertThat(tableExists(metadata, "user_profile")).isTrue();
+            assertThat(tableExists(metadata, "safety_screening")).isTrue();
+            assertThat(uniqueIndexExists(metadata, "safety_screening", Set.of("user_id", "version"))).isTrue();
+            assertThat(importedKeyExists(metadata, "user_profile", "user_account")).isTrue();
+            assertThat(importedKeyExists(metadata, "safety_screening", "user_account")).isTrue();
         }
     }
 

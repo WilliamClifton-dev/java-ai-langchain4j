@@ -21,6 +21,7 @@ The target architecture is delivered incrementally. A capability is considered i
 | Ordered coach memory | transactional per-conversation replacement and rollback tests | implemented |
 | Identity credentials | normalized unique email, BCrypt cost 12, bounded input and hashed-password persistence tests | implemented |
 | Authentication sessions | signed access JWT, opaque refresh rotation/reuse detection, CSRF, Cookie/Bearer authentication and logout tests | implemented |
+| Profile and safety gate | owned minimal profile, immutable screening versions, adult eligibility and automatic-planning block tests | implemented |
 
 Operational SLOs below remain release targets until Task 23 records load, recovery, and rollback evidence. Passing unit tests does not by itself make the service production or enterprise grade.
 
@@ -130,6 +131,8 @@ All user-owned tables include an ownership path that can be constrained in the q
 
 The identity schema is introduced by Flyway V2. `user_account` stores only normalized email and an adaptive password hash. `refresh_token` stores SHA-256 token digests, family ownership, replacement links, expiry, and revocation timestamps; raw refresh tokens exist only at the delivery boundary and are never durable data.
 
+Flyway V3 introduces the profile and screening boundary. `user_profile` stores only calculation inputs needed by deterministic planning: birth date, calculation sex, height, current and target weight, activity level, and IANA time zone. It intentionally excludes names, free-text medical history, diagnoses, and other unneeded health data. Each `safety_screening` row is an immutable, user-owned version; the profile row is locked while its monotonic version advances so concurrent submissions cannot silently overwrite history. The five self-reported risk flags route planning to `ELIGIBLE`, `PROFESSIONAL_REVIEW`, or `INELIGIBLE`; they do not make a diagnosis.
+
 ### Chat Memory
 
 The durable message table stores one message per row. The LangChain4j memory adapter returns a bounded ordered window. Updating memory is transactional. Concurrent writes must either serialize per conversation or detect a version conflict; silent last-write-wins behavior is not acceptable for public beta.
@@ -149,6 +152,7 @@ Flyway migrations are append-only after merge. Production startup validates migr
 - L1 login throttling is a bounded per-process IP-and-email guard. Task 16 moves shared enforcement to Redis before multi-instance deployment; the local guard is defense in depth, not a distributed quota.
 - Every protected application command receives an authenticated user ID.
 - Mapper queries include ownership predicates; fetching by resource ID and checking later is insufficient.
+- Profile and screening requests never accept a user ID. Their owner is always the validated JWT subject, and screening reads include that owner in SQL.
 - Authentication events, token reuse, data export, deletion, and plan activation create audit events without sensitive payloads.
 
 ## Deterministic And AI Boundaries
