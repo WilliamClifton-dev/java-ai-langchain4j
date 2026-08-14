@@ -5,6 +5,7 @@ import com.atguigu.java.ai.langchain4j.coach.dto.CoachChatCommand;
 import com.atguigu.java.ai.langchain4j.coach.dto.CoachChatResult;
 import com.atguigu.java.ai.langchain4j.coach.model.CoachScene;
 import com.atguigu.java.ai.langchain4j.coach.prompt.ScenePromptRepository;
+import com.atguigu.java.ai.langchain4j.coach.tool.CoachToolContext;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -23,12 +24,14 @@ class CoachChatServiceTest {
         HbtiCoachAgent agent = mock(HbtiCoachAgent.class);
         ScenePromptRepository prompts = new ScenePromptRepository();
         Clock clock = Clock.fixed(Instant.parse("2026-08-14T08:00:00Z"), ZoneOffset.UTC);
-        CoachChatService service = new CoachChatService(agent, prompts, clock);
+        CoachChatService service = new CoachChatService(agent, prompts, clock, new CoachToolContext());
         String sceneRules = prompts.get(CoachScene.GENERAL_CHAT);
-        when(agent.chat("conversation-1", "2026-08-14", sceneRules, "怎么开始减脂？"))
+        String memoryId = CoachMemoryKey.forOwner("user-1", "conversation-1");
+        when(agent.chat(memoryId, "2026-08-14", sceneRules, "怎么开始减脂？"))
                 .thenReturn("先从记录一周饮食开始。");
 
         CoachChatResult result = service.chat(new CoachChatCommand(
+                "user-1",
                 "conversation-1",
                 CoachScene.GENERAL_CHAT,
                 "怎么开始减脂？"
@@ -37,6 +40,12 @@ class CoachChatServiceTest {
         assertThat(result.conversationId()).isEqualTo("conversation-1");
         assertThat(result.scene()).isEqualTo(CoachScene.GENERAL_CHAT);
         assertThat(result.answer()).isEqualTo("先从记录一周饮食开始。");
-        verify(agent).chat("conversation-1", "2026-08-14", sceneRules, "怎么开始减脂？");
+        verify(agent).chat(memoryId, "2026-08-14", sceneRules, "怎么开始减脂？");
+    }
+
+    @Test
+    void namespacesTheSameConversationIdentifierByAuthenticatedOwner() {
+        assertThat(CoachMemoryKey.forOwner("user-1", "shared"))
+                .isNotEqualTo(CoachMemoryKey.forOwner("user-2", "shared"));
     }
 }

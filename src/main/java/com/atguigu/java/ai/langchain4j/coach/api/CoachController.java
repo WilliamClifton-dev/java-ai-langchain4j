@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 @RestController
 @RequestMapping("/api/v1/coach/messages")
@@ -20,8 +22,10 @@ public class CoachController {
     }
 
     @PostMapping
-    public CoachChatResult chat(@Valid @RequestBody CoachChatRequest request) {
+    public CoachChatResult chat(@AuthenticationPrincipal Jwt jwt,
+                                @Valid @RequestBody CoachChatRequest request) {
         return coachChatService.chat(new CoachChatCommand(
+                jwt.getSubject(),
                 request.conversationId(),
                 request.scene(),
                 request.message()

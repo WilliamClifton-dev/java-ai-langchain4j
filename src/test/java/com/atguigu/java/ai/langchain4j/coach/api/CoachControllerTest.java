@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -51,6 +52,10 @@ class CoachControllerTest {
                 .andExpect(jsonPath("$.conversationId").value("conversation-1"))
                 .andExpect(jsonPath("$.scene").value("GENERAL_CHAT"))
                 .andExpect(jsonPath("$.answer").value("先记录一周的饮食和活动情况。"));
+
+        org.mockito.Mockito.verify(coachChatService).chat(argThat(command ->
+                command.userId().equals("user-1")
+                        && command.conversationId().equals("conversation-1")));
     }
 
     @Test
