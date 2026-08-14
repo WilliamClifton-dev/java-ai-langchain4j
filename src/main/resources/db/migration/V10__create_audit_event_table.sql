@@ -5,7 +5,8 @@ CREATE TABLE audit_event (
     remote_address VARCHAR(45),
     event_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     success BOOLEAN NOT NULL,
-    details JSON,
-    INDEX idx_user_time (user_id, event_time DESC),
-    INDEX idx_type_time (event_type, event_time DESC)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    details VARCHAR(4000)
+);
+
+CREATE INDEX idx_audit_user_time ON audit_event (user_id, event_time DESC);
+CREATE INDEX idx_audit_type_time ON audit_event (event_type, event_time DESC);
