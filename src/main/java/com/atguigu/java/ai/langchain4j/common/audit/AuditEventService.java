@@ -54,10 +54,16 @@ public class AuditEventService {
             increment(event.eventType(), "persisted");
         } catch (JsonProcessingException exception) {
             increment(event.eventType(), "serialization_failed");
-            log.warn("event=audit_serialization_failed event_type={}", event.eventType().name());
+            log.atWarn()
+                    .addKeyValue("event", "audit_serialization_failed")
+                    .addKeyValue("event_type", event.eventType().name())
+                    .log("Audit details serialization failed");
         } catch (RuntimeException exception) {
             increment(event.eventType(), "persistence_failed");
-            log.error("event=audit_persistence_failed event_type={}", event.eventType().name());
+            log.atError()
+                    .addKeyValue("event", "audit_persistence_failed")
+                    .addKeyValue("event_type", event.eventType().name())
+                    .log("Audit event persistence failed");
         }
     }
 

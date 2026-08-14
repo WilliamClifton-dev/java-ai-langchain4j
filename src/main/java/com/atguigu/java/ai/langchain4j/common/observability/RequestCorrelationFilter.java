@@ -37,8 +37,12 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } finally {
             long durationMillis = (System.nanoTime() - startedNanos) / 1_000_000L;
-            log.info("event=http_request_completed method={} status_class={} duration_ms={}",
-                    request.getMethod(), statusClass(response.getStatus()), durationMillis);
+            log.atInfo()
+                    .addKeyValue("event", "http_request_completed")
+                    .addKeyValue("method", request.getMethod())
+                    .addKeyValue("status_class", statusClass(response.getStatus()))
+                    .addKeyValue("duration_ms", durationMillis)
+                    .log("HTTP request completed");
             MDC.remove(MDC_KEY);
         }
     }

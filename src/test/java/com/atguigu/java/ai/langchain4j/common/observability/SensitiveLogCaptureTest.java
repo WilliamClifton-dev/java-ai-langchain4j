@@ -40,10 +40,12 @@ class SensitiveLogCaptureTest {
             new RequestCorrelationFilter().doFilter(request, response, (incoming, outgoing) -> { });
 
             String rendered = appender.list.stream()
-                    .map(event -> event.getFormattedMessage() + event.getMDCPropertyMap())
+                    .map(event -> event.getFormattedMessage() + event.getMDCPropertyMap()
+                            + event.getKeyValuePairs())
                     .reduce("", (left, right) -> left + right);
             assertThat(rendered)
-                    .contains("event=http_request_completed", "method=POST", "status_class=2xx")
+                    .contains("event=\"http_request_completed\"", "method=\"POST\"",
+                            "status_class=\"2xx\"")
                     .doesNotContain("private-user-path", "token-canary-7219",
                             "refresh-canary-4821", "password-canary-9043");
         } finally {
@@ -71,10 +73,11 @@ class SensitiveLogCaptureTest {
                     java.util.Map.of("reasonCode", "INVALID_CREDENTIALS")));
 
             String rendered = appender.list.stream()
-                    .map(ILoggingEvent::getFormattedMessage)
+                    .map(event -> event.getFormattedMessage() + event.getKeyValuePairs())
                     .reduce("", (left, right) -> left + right);
             assertThat(rendered)
-                    .contains("event=audit_persistence_failed", "event_type=LOGIN_FAILURE")
+                    .contains("event=\"audit_persistence_failed\"",
+                            "event_type=\"LOGIN_FAILURE\"")
                     .doesNotContain("audit-token-canary-4921", "password-canary-5107",
                             "Authorization", "Bearer");
         } finally {
