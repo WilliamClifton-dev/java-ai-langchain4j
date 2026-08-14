@@ -5,6 +5,7 @@ import com.atguigu.java.ai.langchain4j.coach.prompt.ScenePromptRepository;
 import com.atguigu.java.ai.langchain4j.coach.streaming.CoachInvocationRegistry;
 import com.atguigu.java.ai.langchain4j.coach.streaming.CoachStreamingModel;
 import com.atguigu.java.ai.langchain4j.coach.streaming.CoachStreamingService;
+import com.atguigu.java.ai.langchain4j.coach.streaming.CoachMetrics;
 import com.atguigu.java.ai.langchain4j.coach.streaming.CoachRateGuard;
 import com.atguigu.java.ai.langchain4j.coach.streaming.CoachToolProvider;
 import com.atguigu.java.ai.langchain4j.coach.streaming.LangChain4jCoachStreamingModel;
@@ -106,11 +107,11 @@ public class CoachStreamingConfig {
     @Bean
     CoachStreamingService coachStreamingService(
             CoachStreamingModel model, CoachRateGuard rateGuard, ModelCircuitBreaker breaker,
-            ScheduledExecutorService coachStreamScheduler, Clock clock,
+            ScheduledExecutorService coachStreamScheduler, Clock clock, CoachMetrics metrics,
             @Value("${hbti.coach.streaming.first-token-timeout:PT5S}") Duration firstTokenTimeout,
             @Value("${hbti.coach.streaming.total-timeout:PT30S}") Duration totalTimeout,
             @Value("${hbti.coach.streaming.max-concurrent:5}") int maxConcurrent) {
         return new CoachStreamingService(model, rateGuard, breaker, coachStreamScheduler,
-                firstTokenTimeout, totalTimeout, maxConcurrent, clock);
+                firstTokenTimeout, totalTimeout, maxConcurrent, clock, metrics);
     }
 }

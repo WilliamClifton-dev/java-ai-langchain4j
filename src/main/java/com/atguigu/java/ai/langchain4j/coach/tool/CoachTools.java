@@ -8,6 +8,7 @@ import com.atguigu.java.ai.langchain4j.tracking.TrainingCommand;
 import com.atguigu.java.ai.langchain4j.tracking.TrainingIntensity;
 import com.atguigu.java.ai.langchain4j.tracking.TrainingType;
 import com.atguigu.java.ai.langchain4j.tracking.WeeklyReviewService;
+import com.atguigu.java.ai.langchain4j.coach.streaming.CoachMetrics;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import org.springframework.stereotype.Component;
@@ -26,28 +27,34 @@ public class CoachTools {
     private final WeightPlanService plans;
     private final DailyTrackingService tracking;
     private final WeeklyReviewService reviews;
+    private final CoachMetrics metrics;
 
     public CoachTools(CoachToolContext context, WeightPlanService plans,
-                      DailyTrackingService tracking, WeeklyReviewService reviews) {
+                      DailyTrackingService tracking, WeeklyReviewService reviews,
+                      CoachMetrics metrics) {
         this.context = context;
         this.plans = plans;
         this.tracking = tracking;
         this.reviews = reviews;
+        this.metrics = metrics;
     }
 
     @Tool(name = "get_active_plan", value = "Read the authenticated user's active plan")
     public CoachToolResult<?> getActivePlan() {
-        return read(invocation -> plans.currentActive(invocation.userId()).orElse(null));
+        return read("get_active_plan",
+                invocation -> plans.currentActive(invocation.userId()).orElse(null));
     }
 
     @Tool(name = "get_daily_summary", value = "Read one owned local-date tracking summary")
     public CoachToolResult<?> getDailySummary(@P("ISO local date YYYY-MM-DD") String localDate) {
-        return read(invocation -> tracking.summary(invocation.userId(), LocalDate.parse(localDate)));
+        return read("get_daily_summary",
+                invocation -> tracking.summary(invocation.userId(), LocalDate.parse(localDate)));
     }
 
     @Tool(name = "get_weekly_review", value = "Read one owned deterministic weekly review")
     public CoachToolResult<?> getWeeklyReview(@P("Weekly review identifier") String reviewId) {
-        return read(invocation -> reviews.get(invocation.userId(), reviewId).orElse(null));
+        return read("get_weekly_review",
+                invocation -> reviews.get(invocation.userId(), reviewId).orElse(null));
     }
 
     @Tool(name = "record_daily_metric", value = "Record typed daily weight, activity, and sleep facts")
@@ -59,7 +66,7 @@ public class CoachTools {
             @P("Sleep minutes, optional") Integer sleepMinutes,
             @P("Sleep quality 1 to 5, optional") Integer sleepQuality
     ) {
-        return write(invocation ->
+        return write("record_daily_metric", invocation ->
                 tracking.recordMetric(invocation.userId(), toolKey(invocation, "daily_metric",
                                 localDate + '|' + weightKg + '|' + steps + '|' + activityMinutes
                                         + '|' + sleepMinutes + '|' + sleepQuality),
@@ -77,7 +84,7 @@ public class CoachTools {
     ) {
         String payload = localDate + '|' + energyKcal + '|' + proteinG + '|'
                 + carbohydrateG + '|' + fatG;
-        return write(invocation -> tracking.recordNutrition(
+        return write("record_nutrition", invocation -> tracking.recordNutrition(
                 invocation.userId(), toolKey(invocation, "nutrition", payload),
                 new NutritionCommand(LocalDate.parse(localDate), required(energyKcal),
                         requiredDecimal(proteinG), requiredDecimal(carbohydrateG),
@@ -92,14 +99,16 @@ public class CoachTools {
             @P("LOW, MODERATE, or HIGH") String intensity
     ) {
         String payload = localDate + '|' + trainingType + '|' + durationMinutes + '|' + intensity;
-        return write(invocation -> tracking.recordTraining(
+        return write("record_training", invocation -> tracking.recordTraining(
                 invocation.userId(), toolKey(invocation, "training", payload),
                 new TrainingCommand(LocalDate.parse(localDate), TrainingType.valueOf(trainingType),
                         required(durationMinutes), TrainingIntensity.valueOf(intensity))));
     }
 
-    private CoachToolResult<?> read(Function<CoachToolContext.Invocation, Object> action) {
-        return context.current().map(invocation -> {
+    private CoachToolResult<?> read(
+            String toolName, Function<CoachToolContext.Invocation, Object> action
+    ) {
+        CoachToolResult<?> result = context.current().map(invocation -> {
             try {
                 Object data = action.apply(invocation);
                 return data == null ? CoachToolResult.failure("TOOL_NOT_FOUND")
@@ -110,10 +119,14 @@ public class CoachTools {
                 return CoachToolResult.failure("TOOL_READ_FAILED");
             }
         }).orElseGet(() -> CoachToolResult.failure("TOOL_UNAUTHORIZED"));
+        metrics.recordTool(toolName, result.code());
+        return result;
     }
 
-    private CoachToolResult<?> write(Function<CoachToolContext.Invocation, Object> action) {
-        return context.current().map(invocation -> {
+    private CoachToolResult<?> write(
+            String toolName, Function<CoachToolContext.Invocation, Object> action
+    ) {
+        CoachToolResult<?> result = context.current().map(invocation -> {
             try {
                 Object committed = action.apply(invocation);
                 return CoachToolResult.success(committed);
@@ -123,6 +136,8 @@ public class CoachTools {
                 return CoachToolResult.failure("TOOL_WRITE_FAILED");
             }
         }).orElseGet(() -> CoachToolResult.failure("TOOL_UNAUTHORIZED"));
+        metrics.recordTool(toolName, result.code());
+        return result;
     }
 
     private String toolKey(CoachToolContext.Invocation invocation, String tool, String payload) {

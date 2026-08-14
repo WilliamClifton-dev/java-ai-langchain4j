@@ -15,6 +15,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import com.atguigu.java.ai.langchain4j.infrastructure.redis.InMemoryEphemeralStateStore;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -121,7 +122,8 @@ class CoachStreamingServiceTest {
         CoachRateGuard rateGuard = new CoachRateGuard(
                 new InMemoryEphemeralStateStore(clock), 100, Duration.ofMinutes(1));
         return new TestHarness(new CoachStreamingService(model, rateGuard, breaker, scheduler,
-                Duration.ofSeconds(5), Duration.ofSeconds(30), 2, clock), scheduled);
+                Duration.ofSeconds(5), Duration.ofSeconds(30), 2, clock,
+                new CoachMetrics(new SimpleMeterRegistry())), scheduled);
     }
 
     private CoachChatCommand command() {

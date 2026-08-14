@@ -24,15 +24,17 @@ public final class CoachStreamingService {
     private final Duration firstTokenTimeout;
     private final Duration totalTimeout;
     private final Semaphore concurrency;
+    private final CoachMetrics metrics;
 
     public CoachStreamingService(CoachStreamingModel model, CoachRateGuard rateGuard,
                                  ModelCircuitBreaker circuitBreaker,
                                  ScheduledExecutorService scheduler, Duration firstTokenTimeout,
-                                 Duration totalTimeout, int maxConcurrentStreams, Clock clock) {
+                                 Duration totalTimeout, int maxConcurrentStreams, Clock clock,
+                                 CoachMetrics metrics) {
         if (model == null || rateGuard == null || circuitBreaker == null || scheduler == null
                 || invalid(firstTokenTimeout) || invalid(totalTimeout)
                 || totalTimeout.compareTo(firstTokenTimeout) < 0 || maxConcurrentStreams < 1
-                || clock == null) {
+                || clock == null || metrics == null) {
             throw new IllegalArgumentException("Streaming configuration is invalid");
         }
         this.model = model;
@@ -42,29 +44,32 @@ public final class CoachStreamingService {
         this.firstTokenTimeout = firstTokenTimeout;
         this.totalTimeout = totalTimeout;
         this.concurrency = new Semaphore(maxConcurrentStreams);
+        this.metrics = metrics;
     }
 
     public CoachStreamSession open(CoachChatCommand command, CoachEventSink sink) {
         if (command == null || sink == null) throw new IllegalArgumentException("Stream is invalid");
+        CoachMetrics.StreamObservation observation = metrics.startStream();
         try {
             rateGuard.assertAllowed(command.userId());
         } catch (CoachRateLimitExceededException exception) {
-            sink.error("MODEL_RATE_LIMITED", true);
+            reject(observation, sink, "rate_limited", "MODEL_RATE_LIMITED");
             return () -> { };
         }
         if (!concurrency.tryAcquire()) {
-            sink.error("MODEL_CONCURRENCY_LIMIT", true);
+            reject(observation, sink, "concurrency_limited", "MODEL_CONCURRENCY_LIMIT");
             return () -> { };
         }
         ModelCircuitBreaker.Permit breakerPermit = circuitBreaker.tryAcquire();
         if (!breakerPermit.allowed()) {
             concurrency.release();
-            sink.error("MODEL_CIRCUIT_OPEN", true);
+            reject(observation, sink, "circuit_open", "MODEL_CIRCUIT_OPEN");
             return () -> { };
         }
 
-        StreamState state = new StreamState(command, sink, breakerPermit);
+        StreamState state = new StreamState(command, sink, breakerPermit, observation);
         sink.metadata(command.conversationId(), command.scene());
+        metrics.recordSseEvent("metadata");
         state.firstTokenTask.set(schedule(
                 () -> state.timeout("MODEL_FIRST_TOKEN_TIMEOUT"), firstTokenTimeout));
         state.totalTask.set(schedule(() -> state.timeout("MODEL_TIMEOUT"), totalTimeout));
@@ -81,6 +86,13 @@ public final class CoachStreamingService {
         return state;
     }
 
+    private void reject(CoachMetrics.StreamObservation observation, CoachEventSink sink,
+                        String outcome, String code) {
+        metrics.recordStreamFinished(observation, outcome);
+        sink.error(code, true);
+        metrics.recordSseEvent("error");
+    }
+
     private ScheduledFuture<?> schedule(Runnable action, Duration delay) {
         return scheduler.schedule(action, delay.toMillis(), TimeUnit.MILLISECONDS);
     }
@@ -93,7 +105,9 @@ public final class CoachStreamingService {
         private final CoachChatCommand command;
         private final CoachEventSink sink;
         private final ModelCircuitBreaker.Permit breakerPermit;
+        private final CoachMetrics.StreamObservation observation;
         private final AtomicBoolean terminal = new AtomicBoolean();
+        private final AtomicBoolean firstTokenRecorded = new AtomicBoolean();
         private final AtomicBoolean upstreamCancelled = new AtomicBoolean();
         private final AtomicLong sequence = new AtomicLong();
         private final AtomicReference<CoachStreamHandle> upstream =
@@ -102,17 +116,26 @@ public final class CoachStreamingService {
         private final AtomicReference<ScheduledFuture<?>> totalTask = new AtomicReference<>();
 
         private StreamState(CoachChatCommand command, CoachEventSink sink,
-                            ModelCircuitBreaker.Permit breakerPermit) {
+                            ModelCircuitBreaker.Permit breakerPermit,
+                            CoachMetrics.StreamObservation observation) {
             this.command = command;
             this.sink = sink;
             this.breakerPermit = breakerPermit;
+            this.observation = observation;
         }
 
         @Override
         public void onToken(String text) {
             if (terminal.get() || text == null || text.isEmpty()) return;
             cancelTask(firstTokenTask.getAndSet(null));
-            if (!terminal.get()) sink.token(sequence.incrementAndGet(), text);
+            if (firstTokenRecorded.compareAndSet(false, true)) {
+                metrics.recordFirstToken(observation);
+            }
+            if (!terminal.get()) {
+                sink.token(sequence.incrementAndGet(), text);
+                metrics.recordToken();
+                metrics.recordSseEvent("token");
+            }
         }
 
         @Override
@@ -120,24 +143,30 @@ public final class CoachStreamingService {
             if (!terminal.compareAndSet(false, true)) return;
             circuitBreaker.onSuccess(breakerPermit);
             cleanup();
+            metrics.recordStreamFinished(observation, "completed");
             sink.completion(command.conversationId());
+            metrics.recordSseEvent("completion");
         }
 
         @Override
         public void onError(Throwable failure) {
-            fail("MODEL_UNAVAILABLE", true, false);
+            fail("MODEL_UNAVAILABLE", "provider_error", true, false);
         }
 
         private void timeout(String code) {
-            fail(code, true, true);
+            String outcome = "MODEL_FIRST_TOKEN_TIMEOUT".equals(code)
+                    ? "first_token_timeout" : "total_timeout";
+            fail(code, outcome, true, true);
         }
 
-        private void fail(String code, boolean retryable, boolean cancelUpstream) {
+        private void fail(String code, String outcome, boolean retryable, boolean cancelUpstream) {
             if (!terminal.compareAndSet(false, true)) return;
             circuitBreaker.onFailure(breakerPermit);
             if (cancelUpstream) cancelUpstream();
             cleanup();
+            metrics.recordStreamFinished(observation, outcome);
             sink.error(code, retryable);
+            metrics.recordSseEvent("error");
         }
 
         @Override
@@ -146,6 +175,7 @@ public final class CoachStreamingService {
             cancelUpstream();
             circuitBreaker.onCancellation(breakerPermit);
             cleanup();
+            metrics.recordStreamFinished(observation, "cancelled");
         }
 
         private synchronized void cancelUpstream() {

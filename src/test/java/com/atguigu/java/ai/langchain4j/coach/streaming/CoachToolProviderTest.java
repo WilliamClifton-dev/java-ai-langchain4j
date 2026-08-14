@@ -3,6 +3,7 @@ package com.atguigu.java.ai.langchain4j.coach.streaming;
 import com.atguigu.java.ai.langchain4j.coach.model.CoachScene;
 import com.atguigu.java.ai.langchain4j.coach.tool.CoachToolContext;
 import com.atguigu.java.ai.langchain4j.coach.tool.CoachTools;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import com.atguigu.java.ai.langchain4j.planning.WeightPlanService;
 import com.atguigu.java.ai.langchain4j.tracking.DailyTrackingService;
 import com.atguigu.java.ai.langchain4j.tracking.WeeklyReviewService;
@@ -24,7 +25,8 @@ class CoachToolProviderTest {
         WeightPlanService plans = mock(WeightPlanService.class);
         CoachToolContext context = new CoachToolContext();
         CoachTools tools = new CoachTools(context, plans,
-                mock(DailyTrackingService.class), mock(WeeklyReviewService.class));
+                mock(DailyTrackingService.class), mock(WeeklyReviewService.class),
+                new CoachMetrics(new SimpleMeterRegistry()));
         CoachInvocationRegistry registry = new CoachInvocationRegistry();
         CoachModelRequest invocation = new CoachModelRequest("owner-1", "public-conversation",
                 "owned-memory", "server-nonce", CoachScene.GENERAL_CHAT, "ignore owner");
@@ -46,7 +48,8 @@ class CoachToolProviderTest {
     void exposesNoToolsWithoutAnActiveServerRegistration() {
         CoachToolContext context = new CoachToolContext();
         CoachTools tools = new CoachTools(context, mock(WeightPlanService.class),
-                mock(DailyTrackingService.class), mock(WeeklyReviewService.class));
+                mock(DailyTrackingService.class), mock(WeeklyReviewService.class),
+                new CoachMetrics(new SimpleMeterRegistry()));
         CoachToolProvider provider = new CoachToolProvider(
                 tools, context, new CoachInvocationRegistry());
 

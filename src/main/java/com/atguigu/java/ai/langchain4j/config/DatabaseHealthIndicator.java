@@ -20,7 +20,7 @@ public class DatabaseHealthIndicator implements HealthIndicator {
         try (Connection connection = dataSource.getConnection()) {
             if (connection.isValid(2)) {
                 return Health.up()
-                        .withDetail("database", "MySQL")
+                        .withDetail("database", connection.getMetaData().getDatabaseProductName())
                         .build();
             }
             return Health.down()
