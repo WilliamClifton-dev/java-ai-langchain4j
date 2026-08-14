@@ -3,7 +3,10 @@ package com.atguigu.java.ai.langchain4j.common.audit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.slf4j.MDC;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -15,11 +18,14 @@ class AuditEventServiceTest {
 
     private AuditEventService auditService;
     private AuditEventMapper mockMapper;
+    private SimpleMeterRegistry meterRegistry;
 
     @BeforeEach
     void setUp() {
         mockMapper = mock(AuditEventMapper.class);
-        auditService = new AuditEventService(mockMapper, new com.fasterxml.jackson.databind.ObjectMapper());
+        meterRegistry = new SimpleMeterRegistry();
+        auditService = new AuditEventService(
+                mockMapper, new com.fasterxml.jackson.databind.ObjectMapper(), meterRegistry);
     }
 
     @Test
@@ -39,6 +45,7 @@ class AuditEventServiceTest {
                 eq("LOGIN_SUCCESS"),
                 eq("user-123"),
                 eq("192.0.2.1"),
+                isNull(),
                 eq(true),
                 detailsCaptor.capture()
         );
@@ -47,7 +54,7 @@ class AuditEventServiceTest {
         assertThat(details).doesNotContain("password");
         assertThat(details).doesNotContain("secret");
         assertThat(details).contains("action");
-        assertThat(details).contains("ip");
+        assertThat(details).doesNotContain("ip");
     }
 
     @Test
@@ -61,7 +68,8 @@ class AuditEventServiceTest {
         );
 
         assertThatCode(() -> auditService.record(event)).doesNotThrowAnyException();
-        verify(mockMapper).insert(eq("LOGOUT"), eq("user-456"), isNull(), eq(true), isNull());
+        verify(mockMapper).insert(
+                eq("LOGOUT"), eq("user-456"), isNull(), isNull(), eq(true), isNull());
     }
 
     @Test
@@ -70,12 +78,13 @@ class AuditEventServiceTest {
         assertThatCode(() -> auditService.record(
                 new AuditEvent(null, null, "user", null, null, true, null)
         )).doesNotThrowAnyException();
-        verify(mockMapper, never()).insert(any(), any(), any(), anyBoolean(), any());
+        verify(mockMapper, never()).insert(any(), any(), any(), any(), anyBoolean(), any());
     }
 
     @Test
     void handlesMapperFailuresGracefully() {
-        doThrow(new RuntimeException("Database error")).when(mockMapper).insert(any(), any(), any(), anyBoolean(), any());
+        doThrow(new RuntimeException("Database error containing token-canary"))
+                .when(mockMapper).insert(any(), any(), any(), any(), anyBoolean(), any());
 
         AuditEvent event = AuditEvent.create(
                 AuditEventType.LOGIN_FAILURE,
@@ -86,5 +95,48 @@ class AuditEventServiceTest {
         );
 
         assertThatCode(() -> auditService.record(event)).doesNotThrowAnyException();
+        assertThat(meterRegistry.get("hbti.audit.events")
+                .tag("event_type", "LOGIN_FAILURE")
+                .tag("outcome", "persistence_failed")
+                .counter().count()).isEqualTo(1);
+    }
+
+    @Test
+    void recursivelyRemovesSensitiveFieldsAndBoundsDetails() {
+        AuditEvent event = AuditEvent.create(
+                AuditEventType.LOGIN_FAILURE,
+                null,
+                "192.0.2.3",
+                false,
+                Map.of(
+                        "reasonCode", "INVALID_CREDENTIALS",
+                        "context", Map.of(
+                                "action", "login",
+                                "password", "nested-password-canary",
+                                "token", "nested-token-canary"
+                        ),
+                        "values", List.of("safe", Map.of("secret", "nested-secret-canary")),
+                        "unapproved", "x".repeat(5000)
+                )
+        );
+        MDC.put("requestId", "audit-request-17");
+        try {
+            auditService.record(event);
+        } finally {
+            MDC.remove("requestId");
+        }
+
+        ArgumentCaptor<String> detailsCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mockMapper).insert(
+                eq("LOGIN_FAILURE"), isNull(), eq("192.0.2.3"),
+                eq("audit-request-17"), eq(false), detailsCaptor.capture());
+        assertThat(detailsCaptor.getValue())
+                .contains("INVALID_CREDENTIALS", "login", "safe")
+                .doesNotContain("password", "token", "secret", "unapproved")
+                .hasSizeLessThanOrEqualTo(2000);
+        assertThat(meterRegistry.get("hbti.audit.events")
+                .tag("event_type", "LOGIN_FAILURE")
+                .tag("outcome", "persisted")
+                .counter().count()).isEqualTo(1);
     }
 }

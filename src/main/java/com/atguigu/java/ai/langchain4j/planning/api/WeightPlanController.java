@@ -1,8 +1,12 @@
 package com.atguigu.java.ai.langchain4j.planning.api;
 
+import com.atguigu.java.ai.langchain4j.common.audit.AuditEvent;
+import com.atguigu.java.ai.langchain4j.common.audit.AuditEventService;
+import com.atguigu.java.ai.langchain4j.common.audit.AuditEventType;
 import com.atguigu.java.ai.langchain4j.planning.PlanVersionNotFoundException;
 import com.atguigu.java.ai.langchain4j.planning.WeightPlanService;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -15,14 +19,18 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/plans")
 public class WeightPlanController {
 
     private final WeightPlanService service;
+    private final AuditEventService auditEvents;
 
-    public WeightPlanController(WeightPlanService service) {
+    public WeightPlanController(WeightPlanService service, AuditEventService auditEvents) {
         this.service = service;
+        this.auditEvents = auditEvents;
     }
 
     @PostMapping("/drafts")
@@ -80,10 +88,14 @@ public class WeightPlanController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable String planId,
             @PathVariable String versionId,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            HttpServletRequest request
     ) {
-        return WeightPlanVersionResponse.from(
-                service.activate(jwt.getSubject(), planId, versionId, idempotencyKey)
-        );
+        WeightPlanVersionResponse response = WeightPlanVersionResponse.from(
+                service.activate(jwt.getSubject(), planId, versionId, idempotencyKey));
+        auditEvents.record(AuditEvent.create(
+                AuditEventType.PLAN_ACTIVATED, jwt.getSubject(), request.getRemoteAddr(), true,
+                Map.of("action", "activate", "planId", planId, "versionId", versionId)));
+        return response;
     }
 }

@@ -20,6 +20,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -29,6 +30,7 @@ import java.util.Map;
 import java.util.stream.IntStream;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -54,6 +56,9 @@ class WeightPlanApiTest {
 
     @Autowired
     private HbtiAssessmentService assessmentService;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @MockBean
     private CoachChatService coachChatService;
@@ -88,6 +93,12 @@ class WeightPlanApiTest {
         transition(ownerId, planId, versionId, "validation", "VALIDATED");
         transition(ownerId, planId, versionId, "confirmation", "CONFIRMED");
         transition(ownerId, planId, versionId, "activation", "ACTIVE");
+
+        Integer activationAudits = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM audit_event WHERE event_type = 'PLAN_ACTIVATED' "
+                        + "AND user_id = ? AND details LIKE ?",
+                Integer.class, ownerId, "%" + versionId + "%");
+        assertThat(activationAudits).isEqualTo(1);
 
         mockMvc.perform(get("/api/v1/plans/active")
                         .with(jwt().jwt(token -> token.subject(ownerId))))

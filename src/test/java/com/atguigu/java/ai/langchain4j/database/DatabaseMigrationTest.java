@@ -129,6 +129,9 @@ class DatabaseMigrationTest {
             )).isTrue();
             assertThat(importedKeyExists(metadata, "knowledge_chunk", "knowledge_document_version"))
                     .isTrue();
+            assertThat(tableExists(metadata, "audit_event")).isTrue();
+            assertThat(columnExists(metadata, "audit_event", "request_id")).isTrue();
+            assertThat(columnIsNullable(metadata, "audit_event", "user_id")).isTrue();
         }
     }
 
@@ -166,6 +169,32 @@ class DatabaseMigrationTest {
             while (keys.next()) {
                 if (referencedTable.equalsIgnoreCase(keys.getString("PKTABLE_NAME"))) {
                     return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    private boolean columnExists(
+            DatabaseMetaData metadata, String tableName, String columnName
+    ) throws SQLException {
+        String actualTableName = actualTableName(metadata, tableName);
+        try (ResultSet columns = metadata.getColumns(null, null, actualTableName, "%")) {
+            while (columns.next()) {
+                if (columnName.equalsIgnoreCase(columns.getString("COLUMN_NAME"))) return true;
+            }
+            return false;
+        }
+    }
+
+    private boolean columnIsNullable(
+            DatabaseMetaData metadata, String tableName, String columnName
+    ) throws SQLException {
+        String actualTableName = actualTableName(metadata, tableName);
+        try (ResultSet columns = metadata.getColumns(null, null, actualTableName, "%")) {
+            while (columns.next()) {
+                if (columnName.equalsIgnoreCase(columns.getString("COLUMN_NAME"))) {
+                    return columns.getInt("NULLABLE") == DatabaseMetaData.columnNullable;
                 }
             }
             return false;
