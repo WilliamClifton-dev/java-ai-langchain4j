@@ -28,6 +28,7 @@ The target architecture is delivered incrementally. A capability is considered i
 | Versioned plan lifecycle | owned immutable target snapshots, guarded state transitions, hashed idempotency and transactional active-version replacement | implemented |
 | Daily tracking | Flyway V7 typed metric/nutrition/training facts, profile-time-zone date policy, hashed idempotency, owned APIs and deterministic daily aggregation | implemented |
 | Weekly review | Flyway V8 immutable review versions, deterministic trend/adherence policy, missing-data gates, bounded proposals and owned APIs | implemented |
+| Authorized coach tools | six typed LangChain4j tools, JWT-bound invocation context, server-derived write idempotency, owner-scoped services and fail-closed tests | implemented |
 
 Operational SLOs below remain release targets until Task 23 records load, recovery, and rollback evidence. Passing unit tests does not by itself make the service production or enterprise grade.
 
@@ -129,7 +130,7 @@ sequenceDiagram
 | Assessment | `assessment_definition`, `assessment_item`, `assessment_attempt`, `assessment_answer`, `assessment_score` | definition version immutable after publication |
 | Planning | `weight_plan`, `weight_plan_version` | one aggregate per user; one authoritative active-version pointer; immutable target payload per version |
 | Tracking | `daily_metric`, `training_log`, `nutrition_log`, `weekly_review` | user/date/type uniqueness where applicable |
-| Coach | `coach_conversation`, `coach_message` | ownership FK; `(conversation_id, sequence_no)` unique |
+| Coach | `coach_conversation`, `coach_message` | server-derived owner namespace; `(conversation_id, sequence_no)` unique; relational owner FK pending Task 18 lifecycle work |
 | Knowledge | `knowledge_document`, `knowledge_chunk` | source and content version traceable |
 | Governance | `audit_event`, `prompt_version`, `model_policy` | append-only security-relevant history |
 
@@ -141,7 +142,7 @@ Flyway V3 introduces the profile and screening boundary. `user_profile` stores o
 
 ### Chat Memory
 
-The durable message table stores one message per row. The LangChain4j memory adapter returns a bounded ordered window. Updating memory is transactional. Concurrent writes must either serialize per conversation or detect a version conflict; silent last-write-wins behavior is not acceptable for public beta.
+The durable message table stores one message per row. The LangChain4j memory adapter returns a bounded ordered window. Updating memory is transactional. Concurrent writes serialize per conversation. Protected coach requests derive the internal memory key as a SHA-256 namespace over the JWT subject and client conversation ID, so two users choosing the same public identifier do not share context. The V1 conversation table does not yet retain a relational `user_id`; Task 18 must add that ownership path before authenticated export/deletion can be considered complete.
 
 ### Migrations
 
@@ -180,6 +181,8 @@ Health calculation version `MIFFLIN_ST_JEOR_METRIC_V1` uses metric profile input
 - Proposed plan wording or adjustments that remain drafts until validated and confirmed.
 
 Model output is untrusted. Tools use typed schemas, server-derived user IDs, bounded arguments, and application-service authorization. A prompt-injected user message cannot alter those controls.
+
+Task 13 registers exactly six model-visible tools: owned active-plan, daily-summary, and weekly-review reads plus typed daily-metric, nutrition, and training writes. The controller passes the verified JWT subject into a server-only invocation context; no tool schema accepts an owner argument. Write idempotency keys are derived from a per-request server nonce, tool name, and canonical arguments, and the tool returns success only after the transactional application service returns. Invalid arguments, missing context, not-found data, and application failures produce bounded codes without exception or SQL details. This synchronous context is intentionally thread-confined; Task 15 must replace or propagate it explicitly when streaming execution moves across threads. ADR-009 records the boundary.
 
 ## HBTI Governance
 

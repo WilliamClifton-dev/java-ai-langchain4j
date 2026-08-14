@@ -12,7 +12,7 @@
 - [x] Task 10: Versioned plan lifecycle
 - [x] Task 11: Daily tracking records
 - [x] Task 12: Weekly deterministic review
-- [ ] Task 13: Authorized coach tools
+- [x] Task 13: Authorized coach tools
 - [ ] Task 14: Knowledge ingestion and RAG
 - [ ] Task 15: Streaming and model resilience
 - [ ] Task 16: Redis rate, idempotency and cache controls
