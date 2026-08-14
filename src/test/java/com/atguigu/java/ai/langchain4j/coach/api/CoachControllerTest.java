@@ -4,6 +4,7 @@ import com.atguigu.java.ai.langchain4j.coach.dto.CoachChatCommand;
 import com.atguigu.java.ai.langchain4j.coach.dto.CoachChatResult;
 import com.atguigu.java.ai.langchain4j.coach.model.CoachScene;
 import com.atguigu.java.ai.langchain4j.coach.service.CoachChatService;
+import com.atguigu.java.ai.langchain4j.coach.streaming.CoachStreamingService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -28,6 +29,9 @@ class CoachControllerTest {
 
     @MockBean
     private CoachChatService coachChatService;
+
+    @MockBean
+    private CoachStreamingService coachStreamingService;
 
     @Test
     void returnsTheCoachAnswer() throws Exception {

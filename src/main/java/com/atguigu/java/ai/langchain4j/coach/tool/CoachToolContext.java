@@ -11,11 +11,17 @@ public class CoachToolContext {
     private final ThreadLocal<Invocation> current = new ThreadLocal<>();
 
     public <T> T callAs(String userId, String conversationId, Supplier<T> action) {
+        return callAs(userId, conversationId, UUID.randomUUID().toString(), action);
+    }
+
+    public <T> T callAs(String userId, String conversationId, String requestNonce,
+                        Supplier<T> action) {
         if (userId == null || userId.isBlank() || conversationId == null
-                || conversationId.isBlank() || action == null || current.get() != null) {
+                || conversationId.isBlank() || requestNonce == null || requestNonce.isBlank()
+                || action == null || current.get() != null) {
             throw new IllegalStateException("Coach tool context is invalid");
         }
-        current.set(new Invocation(userId, conversationId, UUID.randomUUID().toString()));
+        current.set(new Invocation(userId, conversationId, requestNonce));
         try {
             return action.get();
         } finally {
