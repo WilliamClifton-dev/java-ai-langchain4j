@@ -91,6 +91,18 @@ class DatabaseMigrationTest {
             assertThat(importedKeyExists(metadata, "weight_plan_version", "weight_plan")).isTrue();
             assertThat(importedKeyExists(metadata, "weight_plan_version", "safety_screening")).isTrue();
             assertThat(importedKeyExists(metadata, "weight_plan_version", "assessment_attempt")).isTrue();
+            assertThat(tableExists(metadata, "daily_metric")).isTrue();
+            assertThat(tableExists(metadata, "nutrition_log")).isTrue();
+            assertThat(tableExists(metadata, "training_log")).isTrue();
+            assertThat(uniqueIndexExists(
+                    metadata, "daily_metric", Set.of("user_id", "local_date")
+            )).isTrue();
+            assertThat(uniqueIndexExists(
+                    metadata, "nutrition_log", Set.of("user_id", "local_date")
+            )).isTrue();
+            assertThat(importedKeyExists(metadata, "daily_metric", "user_account")).isTrue();
+            assertThat(importedKeyExists(metadata, "nutrition_log", "user_account")).isTrue();
+            assertThat(importedKeyExists(metadata, "training_log", "user_account")).isTrue();
         }
     }
 
