@@ -15,9 +15,9 @@
 - [x] Task 13: Authorized coach tools
 - [x] Task 14: Knowledge ingestion and RAG
 - [x] Task 15: Streaming and model resilience
-- [ ] Task 16: Redis rate, idempotency and cache controls
-- [ ] Task 17: Observability and audit trail
-- [ ] Task 18: OpenAPI and security hardening
+- [x] Task 16: Redis rate, idempotency and cache controls
+- [x] Task 17: Observability and audit trail
+- [x] Task 18: OpenAPI and security hardening
 - [ ] Task 19: Web foundation and authentication flow
 - [ ] Task 20: Web assessment, profile and plan flow
 - [ ] Task 21: Web tracking, review and coach flow
