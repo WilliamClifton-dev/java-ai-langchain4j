@@ -11,7 +11,7 @@
 - [x] Task 9: Deterministic health calculators
 - [x] Task 10: Versioned plan lifecycle
 - [x] Task 11: Daily tracking records
-- [ ] Task 12: Weekly deterministic review
+- [x] Task 12: Weekly deterministic review
 - [ ] Task 13: Authorized coach tools
 - [ ] Task 14: Knowledge ingestion and RAG
 - [ ] Task 15: Streaming and model resilience
