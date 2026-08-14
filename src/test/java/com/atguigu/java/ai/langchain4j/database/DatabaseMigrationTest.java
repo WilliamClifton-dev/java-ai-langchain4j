@@ -103,6 +103,15 @@ class DatabaseMigrationTest {
             assertThat(importedKeyExists(metadata, "daily_metric", "user_account")).isTrue();
             assertThat(importedKeyExists(metadata, "nutrition_log", "user_account")).isTrue();
             assertThat(importedKeyExists(metadata, "training_log", "user_account")).isTrue();
+            assertThat(tableExists(metadata, "weekly_review")).isTrue();
+            assertThat(uniqueIndexExists(
+                    metadata, "weekly_review", Set.of("user_id", "window_end", "version_no")
+            )).isTrue();
+            assertThat(uniqueIndexExists(
+                    metadata, "weekly_review", Set.of("user_id", "window_end", "input_hash")
+            )).isTrue();
+            assertThat(importedKeyExists(metadata, "weekly_review", "user_account")).isTrue();
+            assertThat(importedKeyExists(metadata, "weekly_review", "weight_plan_version")).isTrue();
         }
     }
 
