@@ -30,6 +30,7 @@ The target architecture is delivered incrementally. A capability is considered i
 | Weekly review | Flyway V8 immutable review versions, deterministic trend/adherence policy, missing-data gates, bounded proposals and owned APIs | implemented |
 | Authorized coach tools | six typed LangChain4j tools, JWT-bound invocation context, server-derived write idempotency, owner-scoped services and fail-closed tests | implemented |
 | Reviewed knowledge retrieval | Flyway V9 source/version/chunk lifecycle, publication filtering, deterministic bounded retrieval, citation metadata and evaluation fixtures | implemented |
+| Coach streaming resilience | named SSE JSON events, explicit async tool identity, first-token/total timeouts, concurrency cap, circuit breaker and outage-isolation tests | implemented |
 
 Operational SLOs below remain release targets until Task 23 records load, recovery, and rollback evidence. Passing unit tests does not by itself make the service production or enterprise grade.
 
@@ -183,7 +184,7 @@ Health calculation version `MIFFLIN_ST_JEOR_METRIC_V1` uses metric profile input
 
 Model output is untrusted. Tools use typed schemas, server-derived user IDs, bounded arguments, and application-service authorization. A prompt-injected user message cannot alter those controls.
 
-Task 13 registers exactly six model-visible tools: owned active-plan, daily-summary, and weekly-review reads plus typed daily-metric, nutrition, and training writes. The controller passes the verified JWT subject into a server-only invocation context; no tool schema accepts an owner argument. Write idempotency keys are derived from a per-request server nonce, tool name, and canonical arguments, and the tool returns success only after the transactional application service returns. Invalid arguments, missing context, not-found data, and application failures produce bounded codes without exception or SQL details. This synchronous context is intentionally thread-confined; Task 15 must replace or propagate it explicitly when streaming execution moves across threads. ADR-009 records the boundary.
+Task 13 registers exactly six model-visible tools: owned active-plan, daily-summary, and weekly-review reads plus typed daily-metric, nutrition, and training writes. The controller passes the verified JWT subject into a server-only invocation context; no tool schema accepts an owner argument. Write idempotency keys are derived from a per-request server nonce, tool name, and canonical arguments, and the tool returns success only after the transactional application service returns. Invalid arguments, missing context, not-found data, and application failures produce bounded codes without exception or SQL details. Synchronous calls bind this context on the caller thread. Streaming calls register an explicit owner/conversation/nonce invocation by server-derived memory ID; LangChain4j's dynamic tool provider looks it up and binds the context on the actual tool-execution thread. Cancellation and terminal callbacks remove the exact registered invocation, so late work cannot retain tool authorization. ADR-009 and ADR-011 record the boundary.
 
 ## HBTI Governance
 
@@ -234,6 +235,10 @@ RAG release gates include retrieval recall, citation correctness, groundedness, 
 | Knowledge index | 2 s | one read retry | answer without RAG only for safe general content and disclose limitation |
 
 Circuit breakers prevent cascading model and retrieval failures. Retry budgets and concurrency limits are global, not multiplied at every layer.
+
+Task 15 implements the coach model controls as single-process L1 state. At most five model streams run concurrently by default. A stream has a configurable 5-second first-token and 30-second total budget; timeout, provider failure, completion, and client cancellation compete for one atomic terminal state. Three consecutive model-bound failures open the circuit for 30 seconds, after which only one half-open probe runs. Local concurrency rejection and client cancellation do not count as provider failure. The test profile replaces the external model port with an immediate failure and proves deterministic calculation remains available.
+
+Client disconnect or timeout cancels the application session, releases its local concurrency permit, removes its tool authorization registration, and suppresses late tokens. LangChain4j `1.0.0-beta3` does not expose a provider-request cancellation handle, so this boundary does not claim that the underlying HTTP request is physically interrupted. Shared multi-instance limits and distributed breaker state are not implemented; Task 16 and deployment evidence must resolve that before horizontal scaling.
 
 ## Observability
 
