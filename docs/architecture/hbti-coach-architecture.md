@@ -32,6 +32,7 @@ The target architecture is delivered incrementally. A capability is considered i
 | Reviewed knowledge retrieval | Flyway V9 source/version/chunk lifecycle, publication filtering, deterministic bounded retrieval, citation metadata and evaluation fixtures | implemented |
 | Coach streaming resilience | named SSE JSON events, explicit async tool identity, first-token/total timeouts, concurrency cap, circuit breaker and outage-isolation tests | implemented |
 | Redis ephemeral controls | shared expiring rate counters, digest-only assessment leases, public-definition cache and explicit outage-mode tests | implemented |
+| Observability and audit | validated request correlation, JSON logs, implemented-workflow audit records, bounded Micrometer metrics and distinct dependency probes | implemented |
 
 Operational SLOs below remain release targets until Task 23 records load, recovery, and rollback evidence. Passing unit tests does not by itself make the service production or enterprise grade.
 
@@ -54,7 +55,7 @@ flowchart LR
     A --> L["LLM provider or Ollama"]
     A --> V["Versioned knowledge index"]
     O["Operator"] --> A
-    A --> T["Logs, metrics, traces and alerts"]
+    A --> T["Correlated JSON logs, Micrometer metrics and health probes"]
 ```
 
 MySQL is the durable system of record. Redis contains only reconstructable or expiring state. The model and knowledge index are untrusted external boundaries.
@@ -135,7 +136,7 @@ sequenceDiagram
 | Tracking | `daily_metric`, `training_log`, `nutrition_log`, `weekly_review` | user/date/type uniqueness where applicable |
 | Coach | `coach_conversation`, `coach_message` | server-derived owner namespace; `(conversation_id, sequence_no)` unique; relational owner FK pending Task 18 lifecycle work |
 | Knowledge | `knowledge_document`, `knowledge_document_version`, `knowledge_chunk` | unique source, immutable content version, ordered chunks and reviewed lifecycle |
-| Governance | `audit_event`, `prompt_version`, `model_policy` | append-only security-relevant history |
+| Governance | `audit_event` | append-only security-relevant history with nullable actor and bounded request correlation |
 
 All user-owned tables include an ownership path that can be constrained in the query. Public identifiers are non-sequential UUIDs; internal numeric keys may be used only where they are never exposed.
 
@@ -163,7 +164,7 @@ Flyway migrations are append-only after merge. Production startup validates migr
 - Every protected application command receives an authenticated user ID.
 - Mapper queries include ownership predicates; fetching by resource ID and checking later is insufficient.
 - Profile and screening requests never accept a user ID. Their owner is always the validated JWT subject, and screening reads include that owner in SQL.
-- Authentication events, token reuse, data export, deletion, and plan activation create audit events without sensitive payloads.
+- Registration, login success/failure, refresh, token reuse, logout and successful plan activation create best-effort audit events without credentials, tokens, health facts or model content. Export and deletion events are not claimed until Task 18 implements those workflows.
 
 ## Deterministic And AI Boundaries
 
@@ -245,9 +246,11 @@ Task 16 permits only bounded expiring or reconstructable Redis state. Login coun
 
 ## Observability
 
-Structured logs include request ID, user pseudonymous ID, route, result code, latency, model policy version, prompt version, tool name, and token counts. They exclude message bodies, credentials, health measurements, and assessment answers.
+Every HTTP boundary accepts a safe 1-to-64-character `X-Request-ID` or generates a UUID, returns it on the response, binds it to MDC and clears it in a `finally` block. Logback emits one JSON object per line. The application HTTP event contains only request ID, method, status class and duration; it omits raw paths, query strings, headers, cookies, bodies and user identifiers. Audit failure events contain fixed event names and enum types without exception text. Canary log-capture tests cover authorization, token and password values.
 
-Metrics cover HTTP latency/errors, database pool, authentication failures, model latency/tokens/cost, tool outcomes, SSE first-token time, queue depth, safety routing, and evaluation version. Traces connect HTTP, SQL, retrieval and model spans without sensitive content.
+Spring Actuator supplies HTTP and resource metrics. Application Micrometer meters add audit persistence outcomes, model-stream duration by eight fixed terminal outcomes, first emitted chunk duration, emitted text-chunk count, four SSE event types and six allowlisted tool names with bounded result codes. Labels never contain user ID, request ID, raw URL, prompt/message/model content, exception text or arbitrary tool arguments. The emitted-token counter measures SSE text chunks, not provider tokenizer usage or billing cost.
+
+Public `/actuator/health/liveness` contains process liveness only. Public `/actuator/health/readiness` contains process readiness, MySQL and Redis; either dependency can remove the instance from traffic without declaring the process dead. Component names are visible for orchestration while diagnostic details require the dedicated `ACTUATOR_ADMIN` authority and remain hidden from ordinary authenticated users. ADR-013 records these choices. Distributed traces, dashboards, alerts, cost accounting and 30-day SLO evidence do not yet exist and remain Task 23 release gates.
 
 ## SLO And Capacity
 
@@ -273,15 +276,14 @@ Promotion to L2 requires 30 days of measured compliance, load-test evidence, on-
 
 ## Data Lifecycle
 
-- Users can export and delete their data through authenticated workflows.
-- Account deletion revokes tokens immediately and queues bounded deletion of owned data with an auditable completion result.
-- Conversation and tracking retention are explicit product settings; backups expire according to the documented schedule.
+- Authenticated export and deletion workflows remain Task 18 acceptance work; their audit enum values are reserved but are not emitted.
+- Account deletion, retention enforcement and backup expiry are target policies, not current implementation evidence.
 - L1 target: MySQL RPO 1 hour and RTO 4 hours, verified by restoration exercise.
 - Prompt, model, assessment and knowledge versions remain traceable after user-content deletion without retaining deleted user content.
 
 ## Deployment
 
-The reference environment uses containers for the backend, web application, MySQL, Redis and local observability dependencies. Production uses managed equivalents where available. Health endpoints separate liveness from readiness. Schema migration is a controlled release step. Secrets enter through the deployment platform and never image layers or source files.
+The current Compose environment contains the backend, MySQL and Redis; the web application and telemetry backend remain delivery work. Its backend health check uses readiness. Production uses managed equivalents where available. Health endpoints separate liveness from readiness. Schema migration is a controlled release step. Secrets enter through the deployment platform and never image layers or source files.
 
 Deployments are rolling or blue/green once more than one instance exists. Every release records artifact version, migration range, prompt/model policy, evaluation report and rollback command.
 

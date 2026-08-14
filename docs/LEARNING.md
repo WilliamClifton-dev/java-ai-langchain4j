@@ -42,7 +42,7 @@ knowledge ───────────────────────�
 
 ### 数据架构
 
-**10 个 Flyway 迁移**：
+**11 个 Flyway 迁移**：
 
 - V1: 会话和消息表
 - V2: 身份表（账户、刷新令牌）
@@ -54,6 +54,7 @@ knowledge ───────────────────────�
 - V8: 周回顾表
 - V9: 知识表
 - V10: 审计事件表
+- V11: 审计请求关联与匿名失败事件升级（MySQL/H2 Java 迁移；逐步检查元数据以支持 DDL 中断后重试）
 
 **关键约束**：
 
@@ -147,6 +148,16 @@ public Result createIdempotent(Command cmd) {
 - HBTI 提交使用 30 秒短租约；完成后的幂等结果仍以 MySQL 为准
 - 仅缓存可从 MySQL 重建的公开 HBTI 定义，TTL 为 1 小时
 - Redis 故障时登录/模型准入拒绝，租约绕过，定义读取回源 MySQL
+
+### 可观测性与审计
+
+- `RequestCorrelationFilter` 只接受安全字符和 64 字符以内的 `X-Request-ID`，否则生成 UUID
+- `logback-spring.xml` 使用 Logback 内置 `JsonEncoder`，MDC 和 key-value 字段进入逐行 JSON
+- `AuditEventService` 只保留白名单详情，限制嵌套深度、集合数量、字符串和 JSON 总长度
+- 审计覆盖注册、登录成功/失败、刷新、令牌复用、退出和计划激活；审计失败不改变业务结果
+- `CoachMetrics` 记录流终态、首段延迟、SSE 文本段、SSE 事件和六个工具结果
+- 指标标签只能来自固定集合，不能使用用户 ID、request ID、原始 URL 或异常文本
+- liveness 只回答进程是否存活；readiness 同时检查 MySQL 和 Redis 是否可接流量，诊断详情只对 `ACTUATOR_ADMIN` 开放
 
 ### 知识检索
 
@@ -243,7 +254,10 @@ mvn flyway:validate
 
 3. **审计和可观测性** - `common/audit/` 包
    - `AuditEventService.java` 中的敏感字段清洗
+   - `RequestCorrelationFilter.java` 中的请求关联与 MDC 生命周期
+   - `CoachMetrics.java` 中的低基数 Micrometer 指标
    - `DatabaseHealthIndicator.java` 中的健康检查
+   - `HealthProbeTest.java` 中的 readiness/liveness 故障语义
 
 ## 常见问题
 
@@ -299,6 +313,7 @@ mvn flyway:validate
 - **ADR-010**: 词法知识检索（非向量）
 - **ADR-011**: 工具安全模型
 - **ADR-012**: Redis 仅保存有界短期或可重建状态
+- **ADR-013**: 有界、厂商中立的日志、指标、审计与健康探针
 
 查看 `docs/decisions/` 获取完整详情。
 

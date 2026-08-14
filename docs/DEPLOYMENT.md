@@ -29,7 +29,7 @@ docker-compose up -d
 Check health:
 ```bash
 docker-compose ps
-curl http://localhost:8080/actuator/health
+curl http://localhost:8080/actuator/health/readiness
 ```
 
 View logs:
@@ -68,9 +68,20 @@ mvn flyway:info
 
 ## Health Checks
 
-- Application health: `http://localhost:8080/actuator/health`
-- Metrics: `http://localhost:8080/actuator/metrics`
+- Public liveness: `http://localhost:8080/actuator/health/liveness`
+- Public readiness (MySQL + Redis): `http://localhost:8080/actuator/health/readiness`
+- Authenticated metrics catalog: `http://localhost:8080/actuator/metrics`
 - API docs: `http://localhost:8080/doc.html`
+
+Health component names and status are public for orchestration. Diagnostic `details`
+require the dedicated `ACTUATOR_ADMIN` authority; an ordinary application JWT does not
+unlock database or Redis diagnostics.
+
+Application logs are newline-delimited JSON. HTTP events carry a validated request ID in
+MDC; model/tool/audit metrics use bounded labels. Important custom meter names are
+`hbti.coach.stream.duration`, `hbti.coach.stream.first_token`,
+`hbti.coach.stream.tokens`, `hbti.coach.sse.events`, `hbti.coach.tool.calls` and
+`hbti.audit.events`.
 
 ## Production Checklist
 
