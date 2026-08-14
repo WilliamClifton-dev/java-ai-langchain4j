@@ -50,6 +50,17 @@ class DatabaseMigrationTest {
             assertThat(uniqueIndexExists(metadata, "safety_screening", Set.of("user_id", "version"))).isTrue();
             assertThat(importedKeyExists(metadata, "user_profile", "user_account")).isTrue();
             assertThat(importedKeyExists(metadata, "safety_screening", "user_account")).isTrue();
+            assertThat(tableExists(metadata, "assessment_definition")).isTrue();
+            assertThat(tableExists(metadata, "assessment_dimension")).isTrue();
+            assertThat(tableExists(metadata, "assessment_item")).isTrue();
+            assertThat(uniqueIndexExists(
+                    metadata, "assessment_definition", Set.of("assessment_key", "version")
+            )).isTrue();
+            assertThat(uniqueIndexExists(
+                    metadata, "assessment_item", Set.of("definition_id", "ordinal")
+            )).isTrue();
+            assertThat(importedKeyExists(metadata, "assessment_dimension", "assessment_definition")).isTrue();
+            assertThat(importedKeyExists(metadata, "assessment_item", "assessment_definition")).isTrue();
         }
     }
 

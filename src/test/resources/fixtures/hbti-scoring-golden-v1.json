@@ -1,0 +1,31 @@
+{
+  "sourceCommit": "bdd1e9fbd75ae9ebdb869d42c61ae7c82cafc76e",
+  "definitionVersion": "1.0.0",
+  "scoringRuleVersion": "1.0.0",
+  "cases": [
+    {
+      "name": "all-left-poles",
+      "values": [5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1],
+      "typeCode": "FHRN",
+      "leftScores": [100, 100, 100, 100]
+    },
+    {
+      "name": "all-right-poles",
+      "values": [1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5],
+      "typeCode": "SCWD",
+      "leftScores": [0, 0, 0, 0]
+    },
+    {
+      "name": "neutral-ties-choose-left",
+      "values": [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+      "typeCode": "FHRN",
+      "leftScores": [50, 50, 50, 50]
+    },
+    {
+      "name": "prototype-rounding-and-direction",
+      "values": [5, 3, 5, 3, 2, 5, 2, 5, 4, 3, 2, 1, 1, 4, 1, 4],
+      "typeCode": "FCRD",
+      "leftScores": [75, 13, 63, 13]
+    }
+  ]
+}

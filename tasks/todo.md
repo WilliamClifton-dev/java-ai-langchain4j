@@ -6,7 +6,7 @@
 - [x] Task 4: Identity schema and credential domain
 - [x] Task 5: Authentication API and security filter chain
 - [x] Task 6: Profile ownership and safety screening
-- [ ] Task 7: Versioned HBTI definition import and scoring engine
+- [x] Task 7: Versioned HBTI definition import and scoring engine
 - [ ] Task 8: HBTI assessment API and result history
 - [ ] Task 9: Deterministic health calculators
 - [ ] Task 10: Versioned plan lifecycle
