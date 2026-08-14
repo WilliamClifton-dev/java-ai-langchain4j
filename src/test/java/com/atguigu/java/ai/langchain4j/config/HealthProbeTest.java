@@ -16,6 +16,7 @@ import reactor.core.publisher.Mono;
 
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -61,6 +62,14 @@ class HealthProbeTest {
                 .andExpect(jsonPath("$.components.readinessState.status").value("UP"))
                 .andExpect(jsonPath("$.components.database.status").value("UP"))
                 .andExpect(jsonPath("$.components.redis.status").value("UP"));
+    }
+
+    @Test
+    void regularAuthenticatedUserCannotReadDependencyDiagnosticDetails() throws Exception {
+        mockMvc.perform(get("/actuator/health/readiness").with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.components.database.status").value("UP"))
+                .andExpect(jsonPath("$.components.database.details").doesNotExist());
     }
 
     @Test
