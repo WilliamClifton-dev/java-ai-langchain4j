@@ -52,3 +52,13 @@ Thumbs.db
 hs_err_pid*
 *.jfr
 *.pdf
+
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local Codex execution ledger
+.codex/plan-runs/

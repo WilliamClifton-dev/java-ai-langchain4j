@@ -1,0 +1,97 @@
+package com.atguigu.java.ai.langchain4j.database;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
+import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
+import org.springframework.test.context.ActiveProfiles;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@JdbcTest
+@ActiveProfiles("test")
+@ImportAutoConfiguration(FlywayAutoConfiguration.class)
+class DatabaseMigrationTest {
+
+    @Autowired
+    private DataSource dataSource;
+
+    @Test
+    void flywayCreatesOrderedConversationSchema() throws SQLException {
+        try (Connection connection = dataSource.getConnection()) {
+            DatabaseMetaData metadata = connection.getMetaData();
+
+            assertThat(tableExists(metadata, "coach_conversation")).isTrue();
+            assertThat(tableExists(metadata, "coach_message")).isTrue();
+            assertThat(uniqueIndexExists(
+                    metadata,
+                    "coach_message",
+                    Set.of("conversation_id", "sequence_no")
+            )).isTrue();
+            assertThat(importedKeyExists(metadata, "coach_message", "coach_conversation")).isTrue();
+        }
+    }
+
+    private boolean tableExists(DatabaseMetaData metadata, String tableName) throws SQLException {
+        return actualTableName(metadata, tableName) != null;
+    }
+
+    private boolean uniqueIndexExists(
+            DatabaseMetaData metadata,
+            String tableName,
+            Set<String> expectedColumns
+    ) throws SQLException {
+        String actualTableName = actualTableName(metadata, tableName);
+        Map<String, Set<String>> indexColumns = new HashMap<>();
+        try (ResultSet indexes = metadata.getIndexInfo(null, null, actualTableName, true, false)) {
+            while (indexes.next()) {
+                String indexName = indexes.getString("INDEX_NAME");
+                String columnName = indexes.getString("COLUMN_NAME");
+                if (indexName != null && columnName != null) {
+                    indexColumns.computeIfAbsent(indexName, ignored -> new HashSet<>())
+                            .add(columnName.toLowerCase());
+                }
+            }
+        }
+        return indexColumns.values().stream().anyMatch(expectedColumns::equals);
+    }
+
+    private boolean importedKeyExists(
+            DatabaseMetaData metadata,
+            String tableName,
+            String referencedTable
+    ) throws SQLException {
+        String actualTableName = actualTableName(metadata, tableName);
+        try (ResultSet keys = metadata.getImportedKeys(null, null, actualTableName)) {
+            while (keys.next()) {
+                if (referencedTable.equalsIgnoreCase(keys.getString("PKTABLE_NAME"))) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    private String actualTableName(DatabaseMetaData metadata, String expectedName) throws SQLException {
+        try (ResultSet tables = metadata.getTables(null, null, "%", new String[]{"TABLE"})) {
+            while (tables.next()) {
+                String actualName = tables.getString("TABLE_NAME");
+                if (expectedName.equalsIgnoreCase(actualName)) {
+                    return actualName;
+                }
+            }
+            return null;
+        }
+    }
+}

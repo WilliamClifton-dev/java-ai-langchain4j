@@ -1,0 +1,237 @@
+# HBTI Coach Target Architecture
+
+## Document Status
+
+- Status: current implementation baseline
+- Approved: 2026-08-14
+- Target: L1 public beta
+- Product specification: `docs/specs/hbti-coach-product-spec.md`
+- Historical course evolution: `docs/architecture/xiaozhi-to-hbti-coach-architecture.md`
+
+This document supersedes the historical medical-to-HBTI execution route. Historical decisions remain available for context, but new implementation must follow this architecture and accepted ADRs.
+
+## Architecture Drivers
+
+1. User health-adjacent data requires explicit ownership, minimization, deletion, and auditability.
+2. HBTI is exploratory and influences delivery strategy only; deterministic rules own scoring, energy targets, and safety limits.
+3. The public beta needs a complete feedback loop before broad feature expansion.
+4. Operational simplicity is more valuable than premature service decomposition.
+5. Every model-dependent behavior needs a deterministic fallback or an honest failure state.
+
+## System Context
+
+```mermaid
+flowchart LR
+    U["Adult user"] --> W["React web application"]
+    W --> A["Spring Boot modular monolith"]
+    A --> M["MySQL 8"]
+    A --> R["Redis"]
+    A --> L["LLM provider or Ollama"]
+    A --> V["Versioned knowledge index"]
+    O["Operator"] --> A
+    A --> T["Logs, metrics, traces and alerts"]
+```
+
+MySQL is the durable system of record. Redis contains only reconstructable or expiring state. The model and knowledge index are untrusted external boundaries.
+
+## Runtime Shape
+
+The backend is a modular monolith with one deployable process. Modules communicate through Java interfaces and typed application commands, not internal HTTP calls.
+
+```text
+identity -> profile -> assessment -> planning -> tracking
+                                      |            |
+                                      +---- coach -+
+knowledge -------------------------------^
+common infrastructure supports modules without owning domain rules
+```
+
+| Module | Responsibility | Owns durable data |
+|---|---|---|
+| Identity | accounts, password credentials, access/refresh tokens, ownership context | yes |
+| Profile | adult profile, goals, preferences, safety screening | yes |
+| Assessment | HBTI definitions, responses, deterministic scoring, result versions | yes |
+| Planning | BMI/BMR/TDEE, nutrition targets, plan drafts and activated versions | yes |
+| Tracking | weight, nutrition, activity, training, sleep and weekly review facts | yes |
+| Coach | conversations, ordered messages, scene orchestration and authorized tools | yes |
+| Knowledge | document versions, chunks, citations and evaluation corpus | metadata yes |
+| Common | errors, clocks, IDs, security primitives and observability adapters | no domain data |
+
+## Dependency Rules
+
+- Controllers translate HTTP contracts to application commands.
+- Application services enforce use-case authorization and transactions.
+- Domain logic is deterministic and framework-light.
+- MyBatis mappers and model clients are outbound adapters.
+- Cross-module reads use narrow query interfaces; direct access to another module's mapper is prohibited.
+- Prompt text never grants permissions and never replaces validation.
+
+## Core User Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant API as API
+    participant D as Deterministic domain
+    participant DB as MySQL
+    participant AI as AI coach
+
+    U->>API: Register and authenticate
+    API->>DB: Store account and token state
+    U->>API: Complete profile and safety screening
+    API->>D: Validate eligibility
+    D->>DB: Persist versioned screening result
+    U->>API: Submit HBTI assessment
+    API->>D: Score versioned definition
+    D->>DB: Persist dimensions and result
+    U->>API: Request a plan
+    API->>D: Calculate targets and draft plan
+    D->>DB: Persist plan version
+    U->>API: Record daily execution
+    API->>DB: Persist typed records
+    U->>API: Ask coach or request weekly review
+    API->>AI: Send bounded context and authorized tools
+    AI-->>API: Text or typed tool request
+    API->>D: Validate and execute tool
+    D->>DB: Commit authorized change
+    API-->>U: Stream response with honest status
+```
+
+## Data Architecture
+
+### Primary Tables
+
+| Aggregate | Key tables | Important constraints |
+|---|---|---|
+| Identity | `user_account`, `refresh_token` | unique normalized email; hashed secrets; token rotation |
+| Profile | `user_profile`, `safety_screening` | one current profile per user; immutable screening versions |
+| Assessment | `assessment_definition`, `assessment_item`, `assessment_attempt`, `assessment_answer`, `assessment_score` | definition version immutable after publication |
+| Planning | `weight_plan`, `weight_plan_version`, `plan_target` | one active version per plan; explicit activation transaction |
+| Tracking | `daily_metric`, `training_log`, `nutrition_log`, `weekly_review` | user/date/type uniqueness where applicable |
+| Coach | `coach_conversation`, `coach_message` | ownership FK; `(conversation_id, sequence_no)` unique |
+| Knowledge | `knowledge_document`, `knowledge_chunk` | source and content version traceable |
+| Governance | `audit_event`, `prompt_version`, `model_policy` | append-only security-relevant history |
+
+All user-owned tables include an ownership path that can be constrained in the query. Public identifiers are non-sequential UUIDs; internal numeric keys may be used only where they are never exposed.
+
+### Chat Memory
+
+The durable message table stores one message per row. The LangChain4j memory adapter returns a bounded ordered window. Updating memory is transactional. Concurrent writes must either serialize per conversation or detect a version conflict; silent last-write-wins behavior is not acceptable for public beta.
+
+### Migrations
+
+Flyway migrations are append-only after merge. Production startup validates migrations and does not auto-repair history. Destructive changes require expand-migrate-contract steps, backups, and rollback instructions.
+
+## Authentication And Authorization
+
+- Passwords use an adaptive password hash supported by Spring Security.
+- Access JWTs are short lived; refresh tokens rotate and are stored as hashes.
+- Browser delivery uses secure, HTTP-only, same-site cookies in same-origin deployment. API bearer support must follow the same token policy.
+- Every protected application command receives an authenticated user ID.
+- Mapper queries include ownership predicates; fetching by resource ID and checking later is insufficient.
+- Authentication events, token reuse, data export, deletion, and plan activation create audit events without sensitive payloads.
+
+## Deterministic And AI Boundaries
+
+### Code Must Own
+
+- Adult eligibility and safety routing.
+- HBTI scoring and version mapping.
+- BMI, BMR, TDEE, calorie and macro ranges.
+- Plan constraints, activation, daily aggregation and trend statistics.
+- Authorization, validation, persistence success, rate and cost limits.
+
+### AI May Own
+
+- Explanation, reflective questions, supportive wording and summarization.
+- Selection among explicitly allowed read tools.
+- Proposed plan wording or adjustments that remain drafts until validated and confirmed.
+
+Model output is untrusted. Tools use typed schemas, server-derived user IDs, bounded arguments, and application-service authorization. A prompt-injected user message cannot alter those controls.
+
+## HBTI Governance
+
+- Assessment definitions and scoring keys are versioned and immutable after publication.
+- Results expose continuous dimension scores before any four-letter shorthand.
+- UI, API and generated content display the non-diagnostic limitation near interpretation.
+- Golden fixtures imported from the prototype prove Java scoring parity.
+- Changes to wording, scoring, normalization, or interpretation require a new version and evaluation report.
+
+## Knowledge And RAG
+
+Only reviewed sources enter the published index. Ingestion records source URL, publisher, retrieval date, content hash, reviewer, locale, and lifecycle status. Retrieval is user-data isolated and returns citations. Missing evidence results in a qualified response, not fabricated authority.
+
+RAG release gates include retrieval recall, citation correctness, groundedness, prompt-injection resistance, and stale-document behavior on a versioned evaluation set.
+
+## API And Error Contract
+
+- REST resources live under `/api/v1` and use camelCase JSON.
+- Validation errors, authentication errors, domain conflicts and service failures use the shared `{ error: { code, message, details } }` envelope.
+- List endpoints are paginated with deterministic ordering.
+- Idempotency keys protect retryable create/activate operations.
+- SSE streams use named events for metadata, token deltas, completion and errors; a stream never reports success before tool transactions commit.
+- OpenAPI is generated and checked as part of the build.
+
+## Reliability And Degradation
+
+| Dependency | Timeout | Retry | Degradation |
+|---|---:|---|---|
+| MySQL | 2 s operation budget | idempotent reads only | reject writes honestly; health becomes unready |
+| Redis | 200 ms | one bounded retry | fall back to conservative local limits or reject sensitive operations |
+| Model | 30 s total, 5 s first token target | only before output and when safe | deterministic features remain available; coach returns typed unavailable error |
+| Knowledge index | 2 s | one read retry | answer without RAG only for safe general content and disclose limitation |
+
+Circuit breakers prevent cascading model and retrieval failures. Retry budgets and concurrency limits are global, not multiplied at every layer.
+
+## Observability
+
+Structured logs include request ID, user pseudonymous ID, route, result code, latency, model policy version, prompt version, tool name, and token counts. They exclude message bodies, credentials, health measurements, and assessment answers.
+
+Metrics cover HTTP latency/errors, database pool, authentication failures, model latency/tokens/cost, tool outcomes, SSE first-token time, queue depth, safety routing, and evaluation version. Traces connect HTTP, SQL, retrieval and model spans without sensitive content.
+
+## SLO And Capacity
+
+### L1 Assumptions
+
+- Up to 1,000 registered users, 100 daily active users.
+- 20 concurrent interactive sessions and 5 concurrent model generations.
+- 100 API requests per second short burst; 20 sustained requests per second excluding model tokens.
+- Maximum 4,000 characters per user message, 8,000 input tokens, 1,500 output tokens, and 10 tool calls per request.
+
+### L1 Internal SLO
+
+| Signal | Target |
+|---|---:|
+| Monthly API availability excluding announced maintenance | 99.5% |
+| Non-model API p95 latency | <= 500 ms |
+| Non-model API p99 latency | <= 1,500 ms |
+| SSE first token p95 | <= 3 s |
+| Server error rate | < 1% over 15 minutes |
+| Successful authenticated writes | >= 99.5% |
+
+Promotion to L2 requires 30 days of measured compliance, load-test evidence, on-call ownership, tested backup restoration, security review, and a rollback exercise. Architecture labels alone never qualify the service as enterprise or production grade.
+
+## Data Lifecycle
+
+- Users can export and delete their data through authenticated workflows.
+- Account deletion revokes tokens immediately and queues bounded deletion of owned data with an auditable completion result.
+- Conversation and tracking retention are explicit product settings; backups expire according to the documented schedule.
+- L1 target: MySQL RPO 1 hour and RTO 4 hours, verified by restoration exercise.
+- Prompt, model, assessment and knowledge versions remain traceable after user-content deletion without retaining deleted user content.
+
+## Deployment
+
+The reference environment uses containers for the backend, web application, MySQL, Redis and local observability dependencies. Production uses managed equivalents where available. Health endpoints separate liveness from readiness. Schema migration is a controlled release step. Secrets enter through the deployment platform and never image layers or source files.
+
+Deployments are rolling or blue/green once more than one instance exists. Every release records artifact version, migration range, prompt/model policy, evaluation report and rollback command.
+
+## Delivery Order
+
+1. Consolidate architecture and replace MongoDB with MySQL chat storage.
+2. Add identity, ownership, profile and safety screening.
+3. Import and version HBTI assessment with golden scoring tests.
+4. Add deterministic calculations, plans, daily records and weekly reviews.
+5. Bind authorized tools, RAG and streaming to the domain services.
+6. Add Redis controls, observability, frontend flows, CI, containers and release gates.
+
+The detailed executable checklist lives in `tasks/plan.md` and `tasks/todo.md`.

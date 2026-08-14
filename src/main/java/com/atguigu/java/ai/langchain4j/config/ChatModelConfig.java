@@ -22,7 +22,7 @@ public class ChatModelConfig {
     }
 
     @Bean(name = "chatModel")
-    @Profile({"minimax", "typefun"})
+    @Profile("minimax")
     public ChatLanguageModel apiChatModel(
             @Value("${ai.chat-model.api-key}") String apiKey,
             @Value("${ai.chat-model.base-url}") String baseUrl,
