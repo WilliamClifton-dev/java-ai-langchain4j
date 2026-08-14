@@ -61,6 +61,16 @@ class DatabaseMigrationTest {
             )).isTrue();
             assertThat(importedKeyExists(metadata, "assessment_dimension", "assessment_definition")).isTrue();
             assertThat(importedKeyExists(metadata, "assessment_item", "assessment_definition")).isTrue();
+            assertThat(tableExists(metadata, "assessment_attempt")).isTrue();
+            assertThat(tableExists(metadata, "assessment_answer")).isTrue();
+            assertThat(tableExists(metadata, "assessment_score")).isTrue();
+            assertThat(uniqueIndexExists(
+                    metadata, "assessment_attempt", Set.of("user_id", "idempotency_key_hash")
+            )).isTrue();
+            assertThat(importedKeyExists(metadata, "assessment_attempt", "user_account")).isTrue();
+            assertThat(importedKeyExists(metadata, "assessment_attempt", "assessment_definition")).isTrue();
+            assertThat(importedKeyExists(metadata, "assessment_answer", "assessment_attempt")).isTrue();
+            assertThat(importedKeyExists(metadata, "assessment_score", "assessment_attempt")).isTrue();
         }
     }
 
