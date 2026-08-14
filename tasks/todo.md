@@ -10,7 +10,7 @@
 - [x] Task 8: HBTI assessment API and result history
 - [x] Task 9: Deterministic health calculators
 - [x] Task 10: Versioned plan lifecycle
-- [ ] Task 11: Daily tracking records
+- [x] Task 11: Daily tracking records
 - [ ] Task 12: Weekly deterministic review
 - [ ] Task 13: Authorized coach tools
 - [ ] Task 14: Knowledge ingestion and RAG
