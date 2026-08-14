@@ -8,7 +8,7 @@
 - [x] Task 6: Profile ownership and safety screening
 - [x] Task 7: Versioned HBTI definition import and scoring engine
 - [x] Task 8: HBTI assessment API and result history
-- [ ] Task 9: Deterministic health calculators
+- [x] Task 9: Deterministic health calculators
 - [ ] Task 10: Versioned plan lifecycle
 - [ ] Task 11: Daily tracking records
 - [ ] Task 12: Weekly deterministic review

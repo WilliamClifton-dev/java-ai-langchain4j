@@ -24,6 +24,7 @@ The target architecture is delivered incrementally. A capability is considered i
 | Profile and safety gate | owned minimal profile, immutable screening versions, adult eligibility and automatic-planning block tests | implemented |
 | HBTI definition and scoring | Flyway V4 published bilingual definition, source provenance, read-only catalog and JavaScript parity fixtures | implemented |
 | HBTI result history | owned transactional attempts/answers/scores, hashed idempotency keys, current/history API and isolation tests | implemented |
+| Deterministic calculations | versioned BMI/BMR/TDEE formulas, conservative target ranges and stale-screening fail-closed policy | implemented |
 
 Operational SLOs below remain release targets until Task 23 records load, recovery, and rollback evidence. Passing unit tests does not by itself make the service production or enterprise grade.
 
@@ -166,6 +167,8 @@ Flyway migrations are append-only after merge. Production startup validates migr
 - BMI, BMR, TDEE, calorie and macro ranges.
 - Plan constraints, activation, daily aggregation and trend statistics.
 - Authorization, validation, persistence success, rate and cost limits.
+
+Health calculation version `MIFFLIN_ST_JEOR_METRIC_V1` uses metric profile inputs, explicit `HALF_UP` rounding, and declared activity factors. Target policy `CONSERVATIVE_ENERGY_RANGE_V1` returns ranges rather than a falsely precise prescription and never lets a loss-range lower bound fall below calculated BMR. These values are planning estimates, not diagnoses or guaranteed expenditure. Automatic target generation fails closed unless the persisted screening is eligible, matches the profile screening version, and is not older than the last profile update. ADR-005 records assumptions and version-change rules.
 
 ### AI May Own
 
