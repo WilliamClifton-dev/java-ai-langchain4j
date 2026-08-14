@@ -66,6 +66,25 @@ class CoachStreamingServiceTest {
     }
 
     @Test
+    void totalTimeoutStillAppliesAfterTheFirstToken() {
+        FakeModel model = new FakeModel();
+        TestHarness harness = harness(model, 3);
+        RecordingSink sink = new RecordingSink();
+
+        harness.service.open(command(), sink);
+        model.listener.onToken("started");
+        harness.scheduled.get(1).run();
+        model.listener.onComplete();
+
+        assertThat(model.cancellations).hasValue(1);
+        assertThat(sink.events).containsExactly(
+                "metadata:conversation-1:GENERAL_CHAT",
+                "token:1:started",
+                "error:MODEL_TIMEOUT:true"
+        );
+    }
+
+    @Test
     void repeatedProviderFailuresOpenCircuitAndFailFast() {
         FakeModel model = new FakeModel();
         TestHarness harness = harness(model, 2);
