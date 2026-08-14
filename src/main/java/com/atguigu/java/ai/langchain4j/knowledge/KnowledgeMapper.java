@@ -87,4 +87,16 @@ interface KnowledgeMapper {
             FROM knowledge_chunk WHERE version_id = #{versionId} ORDER BY ordinal, id
             """)
     List<KnowledgeChunk> chunks(String versionId);
+
+    @Select("""
+            SELECT d.source_key, v.title, v.source_url, v.publisher, v.locale, v.version_no,
+                   v.content_hash AS version_content_hash, v.retrieved_at, c.ordinal, c.content
+            FROM knowledge_chunk c
+            JOIN knowledge_document_version v ON v.id = c.version_id
+            JOIN knowledge_document d ON d.id = v.document_id
+            WHERE v.status = 'PUBLISHED' AND v.locale = #{locale}
+            ORDER BY d.source_key, v.version_no DESC, c.ordinal, c.id
+            LIMIT 500
+            """)
+    List<PublishedKnowledgeRow> publishedChunks(String locale);
 }

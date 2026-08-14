@@ -12,6 +12,7 @@ import static dev.langchain4j.service.spring.AiServiceWiringMode.EXPLICIT;
         wiringMode = EXPLICIT,
         chatModel = "chatModel",
         chatMemoryProvider = "chatMemoryProvider",
+        contentRetriever = "reviewedKnowledgeRetriever",
         tools = "coachTools"
 )
 public interface HbtiCoachAgent {
