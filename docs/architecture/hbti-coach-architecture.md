@@ -31,6 +31,7 @@ The target architecture is delivered incrementally. A capability is considered i
 | Authorized coach tools | six typed LangChain4j tools, JWT-bound invocation context, server-derived write idempotency, owner-scoped services and fail-closed tests | implemented |
 | Reviewed knowledge retrieval | Flyway V9 source/version/chunk lifecycle, publication filtering, deterministic bounded retrieval, citation metadata and evaluation fixtures | implemented |
 | Coach streaming resilience | named SSE JSON events, explicit async tool identity, first-token/total timeouts, concurrency cap, circuit breaker and outage-isolation tests | implemented |
+| Redis ephemeral controls | shared expiring rate counters, digest-only assessment leases, public-definition cache and explicit outage-mode tests | implemented |
 
 Operational SLOs below remain release targets until Task 23 records load, recovery, and rollback evidence. Passing unit tests does not by itself make the service production or enterprise grade.
 
@@ -158,7 +159,7 @@ Flyway migrations are append-only after merge. Production startup validates migr
 - Cookie-authenticated state changes retain CSRF protection; `/api/v1/auth/csrf` bootstraps the double-submit token for the web client.
 - Access tokens are HS256 signed for the single issuing modular monolith, contain only subject and lifecycle claims, and require the configured issuer plus `tokenType=access`.
 - Refresh tokens are 256-bit opaque values. Rotation locks the digest row; reuse revokes the entire family before returning a generic session error.
-- L1 login throttling is a bounded per-process IP-and-email guard. Task 16 moves shared enforcement to Redis before multi-instance deployment; the local guard is defense in depth, not a distributed quota.
+- Login and coach request limits use shared Redis fixed-window counters with pseudonymous keys and bounded TTLs. Redis admission failure rejects the security- or cost-sensitive request instead of silently disabling enforcement.
 - Every protected application command receives an authenticated user ID.
 - Mapper queries include ownership predicates; fetching by resource ID and checking later is insufficient.
 - Profile and screening requests never accept a user ID. Their owner is always the validated JWT subject, and screening reads include that owner in SQL.
@@ -230,7 +231,7 @@ RAG release gates include retrieval recall, citation correctness, groundedness, 
 | Dependency | Timeout | Retry | Degradation |
 |---|---:|---|---|
 | MySQL | 2 s operation budget | idempotent reads only | reject writes honestly; health becomes unready |
-| Redis | 200 ms | one bounded retry | fall back to conservative local limits or reject sensitive operations |
+| Redis | 200 ms | client reconnect only; no application replay | reject login/model admission; bypass optional lease and read MySQL on cache failure |
 | Model | 30 s total, 5 s first token target | only before output and when safe | deterministic features remain available; coach returns typed unavailable error |
 | Knowledge index | 2 s | one read retry | answer without RAG only for safe general content and disclose limitation |
 
@@ -238,7 +239,9 @@ Circuit breakers prevent cascading model and retrieval failures. Retry budgets a
 
 Task 15 implements the coach model controls as single-process L1 state. At most five model streams run concurrently by default. A stream has a configurable 5-second first-token and 30-second total budget; timeout, provider failure, completion, and client cancellation compete for one atomic terminal state. Three consecutive model-bound failures open the circuit for 30 seconds, after which only one half-open probe runs. Local concurrency rejection and client cancellation do not count as provider failure. The test profile replaces the external model port with an immediate failure and proves deterministic calculation remains available.
 
-Client disconnect or timeout cancels the application session, releases its local concurrency permit, removes its tool authorization registration, and suppresses late tokens. LangChain4j `1.0.0-beta3` does not expose a provider-request cancellation handle, so this boundary does not claim that the underlying HTTP request is physically interrupted. Shared multi-instance limits and distributed breaker state are not implemented; Task 16 and deployment evidence must resolve that before horizontal scaling.
+Client disconnect or timeout cancels the application session, releases its local concurrency permit, removes its tool authorization registration, and suppresses late tokens. LangChain4j `1.0.0-beta3` does not expose a provider-request cancellation handle, so this boundary does not claim that the underlying HTTP request is physically interrupted. Shared request-rate enforcement is implemented through Redis, while the stream semaphore and model circuit remain process-local; deployment and Task 23 evidence are still required before horizontal scaling claims.
+
+Task 16 permits only bounded expiring or reconstructable Redis state. Login counters expire after 15 minutes by default, coach counters after 1 minute, and request leases are constrained to 1 second through 5 minutes (30 seconds for assessment submissions). Rate and lease keys contain SHA-256 digests rather than raw IP, email, owner, or idempotency values. Lease values are random-token digests and release uses atomic compare-and-delete. The only read cache stores the public published HBTI definition for 1 hour under an explicit versioned namespace. Cache miss, corrupt data, timeout, and population failure read MySQL. Completed idempotency results, user facts, credentials, tokens, prompts, messages, answers, health measurements and model output never use Redis as durable storage. ADR-012 records the boundary.
 
 ## Observability
 

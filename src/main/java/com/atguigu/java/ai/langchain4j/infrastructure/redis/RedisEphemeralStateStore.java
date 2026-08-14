@@ -16,6 +16,13 @@ public final class RedisEphemeralStateStore implements EphemeralStateStore {
                     end
                     return current
                     """, Long.class);
+    private static final DefaultRedisScript<Long> DELETE_IF_VALUE =
+            new DefaultRedisScript<>("""
+                    if redis.call('GET', KEYS[1]) == ARGV[1] then
+                      return redis.call('DEL', KEYS[1])
+                    end
+                    return 0
+                    """, Long.class);
 
     private final StringRedisTemplate redis;
 
@@ -72,6 +79,17 @@ public final class RedisEphemeralStateStore implements EphemeralStateStore {
         validate(key, ttl);
         try {
             return Boolean.TRUE.equals(redis.opsForValue().setIfAbsent(key, value, ttl));
+        } catch (RuntimeException exception) {
+            throw new EphemeralStateUnavailableException(exception);
+        }
+    }
+
+    @Override
+    public boolean deleteIfValue(String key, String expectedValue) {
+        if (key == null || key.isBlank() || expectedValue == null) return false;
+        try {
+            Long deleted = redis.execute(DELETE_IF_VALUE, List.of(key), expectedValue);
+            return deleted != null && deleted == 1L;
         } catch (RuntimeException exception) {
             throw new EphemeralStateUnavailableException(exception);
         }

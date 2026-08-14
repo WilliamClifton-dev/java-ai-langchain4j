@@ -20,7 +20,7 @@ All endpoints require an access token. The server derives the owner from the JWT
 
 The real request must contain exactly one valid answer for every item in the selected published definition. The example is abbreviated. The service validates and scores the full answer set, then commits the attempt, answers, and four dimension scores in one transaction.
 
-The first accepted request returns `201`; replaying the same key and canonical payload returns the original result with `200` and `replayed: true`. Reusing a key with a different definition or answer payload returns `409 IDEMPOTENCY_CONFLICT`. Raw idempotency keys are not stored; MySQL stores a SHA-256 digest.
+The first accepted request returns `201`; replaying the same key and canonical payload after completion returns the original MySQL result with `200` and `replayed: true`. A concurrent equivalent request returns `409 REQUEST_ALREADY_IN_FLIGHT`; it may retry after the first request finishes. Reusing a completed key with a different definition or answer payload returns `409 IDEMPOTENCY_CONFLICT`. Raw idempotency keys are not stored; Redis and MySQL use separate SHA-256 digests, and MySQL remains authoritative.
 
 ## Read Results
 
@@ -45,3 +45,4 @@ Answers are not returned by these endpoints. They remain durable facts for versi
 | 404 | `ASSESSMENT_DEFINITION_NOT_FOUND` | requested published definition does not exist |
 | 404 | `ASSESSMENT_RESULT_NOT_FOUND` | authenticated user has no current result |
 | 409 | `IDEMPOTENCY_CONFLICT` | key was already used with another payload |
+| 409 | `REQUEST_ALREADY_IN_FLIGHT` | an equivalent request is still being processed |

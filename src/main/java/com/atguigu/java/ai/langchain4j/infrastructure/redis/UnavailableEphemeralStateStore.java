@@ -11,6 +11,7 @@ public final class UnavailableEphemeralStateStore implements EphemeralStateStore
     @Override public boolean putIfAbsent(String key, String value, Duration ttl) {
         throw unavailable();
     }
+    @Override public boolean deleteIfValue(String key, String expectedValue) { throw unavailable(); }
     @Override public void delete(String key) { throw unavailable(); }
 
     private EphemeralStateUnavailableException unavailable() {

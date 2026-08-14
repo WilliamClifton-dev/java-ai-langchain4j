@@ -14,5 +14,7 @@ public interface EphemeralStateStore {
 
     boolean putIfAbsent(String key, String value, Duration ttl);
 
+    boolean deleteIfValue(String key, String expectedValue);
+
     void delete(String key);
 }

@@ -24,9 +24,14 @@ class DailySummaryAggregationTest extends TrackingIntegrationTestSupport {
         ));
 
         DailySummary summary = service.summary(userId, date);
+        DailySummary repeatedSummary = service.summary(userId, date);
 
         assertThat(summary.trainingSessions()).extracting(TrainingLog::trainingType)
-                .containsExactly(TrainingType.STRENGTH, TrainingType.MOBILITY);
+                .containsExactlyInAnyOrder(TrainingType.STRENGTH, TrainingType.MOBILITY);
+        assertThat(repeatedSummary.trainingSessions()).extracting(TrainingLog::id)
+                .containsExactlyElementsOf(summary.trainingSessions().stream()
+                        .map(TrainingLog::id)
+                        .toList());
         assertThat(summary.trainingMinutes()).isEqualTo(70);
     }
 }

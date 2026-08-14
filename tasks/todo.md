@@ -16,11 +16,11 @@
 - [x] Task 14: Knowledge ingestion and RAG
 - [x] Task 15: Streaming and model resilience
 - [x] Task 16: Redis rate, idempotency and cache controls
-- [x] Task 17: Observability and audit trail
-- [x] Task 18: OpenAPI and security hardening
+- [ ] Task 17: Observability and audit trail (partial: audit storage and DB health only)
+- [ ] Task 18: OpenAPI and security hardening (partial: OpenAPI metadata and baseline headers only)
 - [ ] Task 19: Web foundation and authentication flow
 - [ ] Task 20: Web assessment, profile and plan flow
 - [ ] Task 21: Web tracking, review and coach flow
-- [x] Task 22: CI, Docker and environment delivery
+- [ ] Task 22: CI, Docker and environment delivery (partial: backend CI and container scaffolding only)
 - [ ] Task 23: Evaluation, load, backup and rollback gates
-- [x] Task 24: Final architecture and learning handoff
+- [ ] Task 24: Final architecture and learning handoff (partial: initial learning guide only)

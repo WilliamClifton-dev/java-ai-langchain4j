@@ -5,6 +5,7 @@ import com.atguigu.java.ai.langchain4j.assessment.HbtiAnswer;
 import com.atguigu.java.ai.langchain4j.assessment.HbtiAssessmentService;
 import com.atguigu.java.ai.langchain4j.assessment.HbtiAssessmentSubmission;
 import com.atguigu.java.ai.langchain4j.assessment.SubmitHbtiAssessmentCommand;
+import com.atguigu.java.ai.langchain4j.infrastructure.redis.RequestLeaseCoordinator;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,14 +19,21 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Duration;
+
 @RestController
 @RequestMapping("/api/v1/assessments/hbti")
 public class HbtiAssessmentController {
 
     private final HbtiAssessmentService service;
+    private final RequestLeaseCoordinator leaseCoordinator;
 
-    public HbtiAssessmentController(HbtiAssessmentService service) {
+    public HbtiAssessmentController(
+            HbtiAssessmentService service,
+            RequestLeaseCoordinator leaseCoordinator
+    ) {
         this.service = service;
+        this.leaseCoordinator = leaseCoordinator;
     }
 
     @PostMapping("/submissions")
@@ -34,8 +42,22 @@ public class HbtiAssessmentController {
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody HbtiAssessmentSubmissionRequest request
     ) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            return submit(jwt.getSubject(), idempotencyKey, request);
+        }
+        try (RequestLeaseCoordinator.Lease ignored = leaseCoordinator.acquire(
+                "assessment", jwt.getSubject(), idempotencyKey, Duration.ofSeconds(30))) {
+            return submit(jwt.getSubject(), idempotencyKey, request);
+        }
+    }
+
+    private ResponseEntity<HbtiAssessmentSubmissionResponse> submit(
+            String userId,
+            String idempotencyKey,
+            HbtiAssessmentSubmissionRequest request
+    ) {
         HbtiAssessmentSubmission submission = service.submit(
-                jwt.getSubject(), idempotencyKey,
+                userId, idempotencyKey,
                 new SubmitHbtiAssessmentCommand(
                         request.definitionVersion(),
                         request.answers().stream()

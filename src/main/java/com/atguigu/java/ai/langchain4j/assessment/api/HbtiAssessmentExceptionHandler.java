@@ -6,6 +6,7 @@ import com.atguigu.java.ai.langchain4j.assessment.IdempotencyConflictException;
 import com.atguigu.java.ai.langchain4j.assessment.InvalidAssessmentAnswersException;
 import com.atguigu.java.ai.langchain4j.assessment.InvalidAssessmentRequestException;
 import com.atguigu.java.ai.langchain4j.common.api.ApiErrorResponse;
+import com.atguigu.java.ai.langchain4j.infrastructure.redis.RequestAlreadyInFlightException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -44,6 +45,12 @@ public class HbtiAssessmentExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     public ApiErrorResponse idempotencyConflict() {
         return error("IDEMPOTENCY_CONFLICT", "Idempotency key was used with a different request");
+    }
+
+    @ExceptionHandler(RequestAlreadyInFlightException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiErrorResponse requestAlreadyInFlight() {
+        return error("REQUEST_ALREADY_IN_FLIGHT", "An equivalent request is already being processed");
     }
 
     private ApiErrorResponse error(String code, String message) {

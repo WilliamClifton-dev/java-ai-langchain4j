@@ -52,6 +52,14 @@ public final class InMemoryEphemeralStateStore implements EphemeralStateStore {
     }
 
     @Override
+    public synchronized boolean deleteIfValue(String key, String expectedValue) {
+        if (key == null || key.isBlank() || expectedValue == null) return false;
+        Optional<Entry> current = current(key);
+        if (current.isEmpty() || !current.get().value().equals(expectedValue)) return false;
+        return values.remove(key, current.get());
+    }
+
+    @Override
     public void delete(String key) {
         if (key != null) values.remove(key);
     }

@@ -140,6 +140,14 @@ public Result createIdempotent(Command cmd) {
 - 熔断器：3 次连续失败 → 30 秒打开
 - 客户端断开：取消会话，释放许可，移除工具授权
 
+### Redis 短期状态
+
+- 登录与模型请求使用带 TTL 的共享固定窗口计数器
+- Redis key 只包含命名空间和 SHA-256 摘要，不包含原始用户标识或幂等键
+- HBTI 提交使用 30 秒短租约；完成后的幂等结果仍以 MySQL 为准
+- 仅缓存可从 MySQL 重建的公开 HBTI 定义，TTL 为 1 小时
+- Redis 故障时登录/模型准入拒绝，租约绕过，定义读取回源 MySQL
+
 ### 知识检索
 
 - 词法评分（中文汉字 bigram + 标准化字母数字）
@@ -216,7 +224,7 @@ mvn flyway:validate
 2. **授权工具** - `coach/tool/` 包
    - `CoachToolProvider.java` 中的工具注册
    - `CoachToolAuthorizationTest.java` 中的安全测试
-   - `CoachInvocationContext.java` 中的服务器派生上下文
+   - `CoachToolContext.java` 中的服务器派生上下文
 
 3. **提示工程** - `src/main/resources/prompts/hbti/`
    - `core.txt` - 核心系统提示
@@ -259,7 +267,7 @@ mvn flyway:validate
 
 **A**: 
 1. 在 `coach/tool/` 创建带有 `@Tool` 注解的方法
-2. 工具接收 `CoachInvocationContext`（包含已验证的所有者）
+2. 工具通过 `CoachToolContext` 获取服务器绑定的所有者
 3. 调用应用服务（已包含授权）
 4. 在 `CoachToolAuthorizationTest` 添加测试
 5. 更新工具计数断言
@@ -290,6 +298,7 @@ mvn flyway:validate
 - **ADR-009**: 授权 AI 工具边界
 - **ADR-010**: 词法知识检索（非向量）
 - **ADR-011**: 工具安全模型
+- **ADR-012**: Redis 仅保存有界短期或可重建状态
 
 查看 `docs/decisions/` 获取完整详情。
 
