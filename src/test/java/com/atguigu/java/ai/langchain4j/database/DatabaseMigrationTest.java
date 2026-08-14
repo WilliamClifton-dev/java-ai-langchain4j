@@ -112,6 +112,23 @@ class DatabaseMigrationTest {
             )).isTrue();
             assertThat(importedKeyExists(metadata, "weekly_review", "user_account")).isTrue();
             assertThat(importedKeyExists(metadata, "weekly_review", "weight_plan_version")).isTrue();
+            assertThat(tableExists(metadata, "knowledge_document")).isTrue();
+            assertThat(tableExists(metadata, "knowledge_document_version")).isTrue();
+            assertThat(tableExists(metadata, "knowledge_chunk")).isTrue();
+            assertThat(uniqueIndexExists(
+                    metadata, "knowledge_document", Set.of("source_key")
+            )).isTrue();
+            assertThat(uniqueIndexExists(
+                    metadata, "knowledge_document_version", Set.of("document_id", "version_no")
+            )).isTrue();
+            assertThat(uniqueIndexExists(
+                    metadata, "knowledge_chunk", Set.of("version_id", "ordinal")
+            )).isTrue();
+            assertThat(importedKeyExists(
+                    metadata, "knowledge_document_version", "knowledge_document"
+            )).isTrue();
+            assertThat(importedKeyExists(metadata, "knowledge_chunk", "knowledge_document_version"))
+                    .isTrue();
         }
     }
 
