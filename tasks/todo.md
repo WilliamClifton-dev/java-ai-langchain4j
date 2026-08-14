@@ -4,7 +4,7 @@
 - [x] Task 2: MySQL build and migration foundation
 - [x] Task 3: MySQL chat memory vertical slice
 - [x] Task 4: Identity schema and credential domain
-- [ ] Task 5: Authentication API and security filter chain
+- [x] Task 5: Authentication API and security filter chain
 - [ ] Task 6: Profile ownership and safety screening
 - [ ] Task 7: Versioned HBTI definition import and scoring engine
 - [ ] Task 8: HBTI assessment API and result history

@@ -16,11 +16,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiErrorResponse handleUnreadableRequest() {
-        return new ApiErrorResponse(new ApiErrorResponse.ApiError(
-                "INVALID_REQUEST",
-                "Request body is invalid",
-                Map.of()
-        ));
+        return error("INVALID_REQUEST", "Request body is invalid");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -36,5 +32,9 @@ public class GlobalExceptionHandler {
                 "Request validation failed",
                 details
         ));
+    }
+
+    private ApiErrorResponse error(String code, String message) {
+        return new ApiErrorResponse(new ApiErrorResponse.ApiError(code, message, Map.of()));
     }
 }

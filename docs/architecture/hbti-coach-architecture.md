@@ -20,7 +20,7 @@ The target architecture is delivered incrementally. A capability is considered i
 | Durable persistence | Flyway V1/V2, MySQL runtime configuration and H2 migration tests | implemented |
 | Ordered coach memory | transactional per-conversation replacement and rollback tests | implemented |
 | Identity credentials | normalized unique email, BCrypt cost 12, bounded input and hashed-password persistence tests | implemented |
-| Authentication sessions | access/refresh issue, rotation, reuse detection and logout tests | planned in Task 5 |
+| Authentication sessions | signed access JWT, opaque refresh rotation/reuse detection, CSRF, Cookie/Bearer authentication and logout tests | implemented |
 
 Operational SLOs below remain release targets until Task 23 records load, recovery, and rollback evidence. Passing unit tests does not by itself make the service production or enterprise grade.
 
@@ -143,6 +143,10 @@ Flyway migrations are append-only after merge. Production startup validates migr
 - Passwords use an adaptive password hash supported by Spring Security.
 - Access JWTs are short lived; refresh tokens rotate and are stored as hashes.
 - Browser delivery uses secure, HTTP-only, same-site cookies in same-origin deployment. API bearer support must follow the same token policy.
+- Cookie-authenticated state changes retain CSRF protection; `/api/v1/auth/csrf` bootstraps the double-submit token for the web client.
+- Access tokens are HS256 signed for the single issuing modular monolith, contain only subject and lifecycle claims, and require the configured issuer plus `tokenType=access`.
+- Refresh tokens are 256-bit opaque values. Rotation locks the digest row; reuse revokes the entire family before returning a generic session error.
+- L1 login throttling is a bounded per-process IP-and-email guard. Task 16 moves shared enforcement to Redis before multi-instance deployment; the local guard is defense in depth, not a distributed quota.
 - Every protected application command receives an authenticated user ID.
 - Mapper queries include ownership predicates; fetching by resource ID and checking later is insufficient.
 - Authentication events, token reuse, data export, deletion, and plan activation create audit events without sensitive payloads.
@@ -240,6 +244,8 @@ Promotion to L2 requires 30 days of measured compliance, load-test evidence, on-
 The reference environment uses containers for the backend, web application, MySQL, Redis and local observability dependencies. Production uses managed equivalents where available. Health endpoints separate liveness from readiness. Schema migration is a controlled release step. Secrets enter through the deployment platform and never image layers or source files.
 
 Deployments are rolling or blue/green once more than one instance exists. Every release records artifact version, migration range, prompt/model policy, evaluation report and rollback command.
+
+Authentication requires `AUTH_SIGNING_KEY` with at least 32 UTF-8 bytes. Production keeps `AUTH_SECURE_COOKIES=true`; the false setting exists only for local HTTP and isolated tests. Signing-key rotation requires an explicit multi-key validation design before L1 launch and is tracked in the authentication ADR.
 
 ## Delivery Order
 
