@@ -2,6 +2,8 @@ package com.atguigu.java.ai.langchain4j.coach.streaming;
 
 import com.atguigu.java.ai.langchain4j.coach.dto.CoachChatCommand;
 import com.atguigu.java.ai.langchain4j.coach.service.CoachMemoryKey;
+import com.atguigu.java.ai.langchain4j.store.CoachConversationOwnershipService;
+import com.atguigu.java.ai.langchain4j.store.ConversationOwnershipException;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -25,16 +27,18 @@ public final class CoachStreamingService {
     private final Duration totalTimeout;
     private final Semaphore concurrency;
     private final CoachMetrics metrics;
+    private final CoachConversationOwnershipService ownership;
 
     public CoachStreamingService(CoachStreamingModel model, CoachRateGuard rateGuard,
                                  ModelCircuitBreaker circuitBreaker,
                                  ScheduledExecutorService scheduler, Duration firstTokenTimeout,
                                  Duration totalTimeout, int maxConcurrentStreams, Clock clock,
-                                 CoachMetrics metrics) {
+                                 CoachMetrics metrics,
+                                 CoachConversationOwnershipService ownership) {
         if (model == null || rateGuard == null || circuitBreaker == null || scheduler == null
                 || invalid(firstTokenTimeout) || invalid(totalTimeout)
                 || totalTimeout.compareTo(firstTokenTimeout) < 0 || maxConcurrentStreams < 1
-                || clock == null || metrics == null) {
+                || clock == null || metrics == null || ownership == null) {
             throw new IllegalArgumentException("Streaming configuration is invalid");
         }
         this.model = model;
@@ -45,6 +49,7 @@ public final class CoachStreamingService {
         this.totalTimeout = totalTimeout;
         this.concurrency = new Semaphore(maxConcurrentStreams);
         this.metrics = metrics;
+        this.ownership = ownership;
     }
 
     public CoachStreamSession open(CoachChatCommand command, CoachEventSink sink) {
@@ -67,6 +72,23 @@ public final class CoachStreamingService {
             return () -> { };
         }
 
+        String memoryId = CoachMemoryKey.forOwner(command.userId(), command.conversationId());
+        try {
+            ownership.claim(command.userId(), memoryId);
+        } catch (ConversationOwnershipException conflict) {
+            circuitBreaker.onCancellation(breakerPermit);
+            concurrency.release();
+            reject(observation, sink, "ownership_conflict",
+                    "CONVERSATION_ACCESS_DENIED", false);
+            return () -> { };
+        } catch (RuntimeException unavailable) {
+            circuitBreaker.onCancellation(breakerPermit);
+            concurrency.release();
+            reject(observation, sink, "ownership_unavailable",
+                    "CONVERSATION_STORE_UNAVAILABLE", true);
+            return () -> { };
+        }
+
         StreamState state = new StreamState(command, sink, breakerPermit, observation);
         sink.metadata(command.conversationId(), command.scene());
         metrics.recordSseEvent("metadata");
@@ -76,7 +98,7 @@ public final class CoachStreamingService {
         try {
             CoachModelRequest request = new CoachModelRequest(
                     command.userId(), command.conversationId(),
-                    CoachMemoryKey.forOwner(command.userId(), command.conversationId()),
+                    memoryId,
                     UUID.randomUUID().toString(), command.scene(), command.message());
             CoachStreamHandle handle = model.start(request, state);
             state.setUpstream(handle == null ? NOOP_HANDLE : handle);
@@ -88,8 +110,13 @@ public final class CoachStreamingService {
 
     private void reject(CoachMetrics.StreamObservation observation, CoachEventSink sink,
                         String outcome, String code) {
+        reject(observation, sink, outcome, code, true);
+    }
+
+    private void reject(CoachMetrics.StreamObservation observation, CoachEventSink sink,
+                        String outcome, String code, boolean retryable) {
         metrics.recordStreamFinished(observation, outcome);
-        sink.error(code, true);
+        sink.error(code, retryable);
         metrics.recordSseEvent("error");
     }
 

@@ -6,6 +6,7 @@ import com.atguigu.java.ai.langchain4j.infrastructure.redis.InMemoryEphemeralSta
 import io.micrometer.core.instrument.MockClock;
 import io.micrometer.core.instrument.simple.SimpleConfig;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import com.atguigu.java.ai.langchain4j.store.CoachConversationOwnershipService;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -93,7 +94,8 @@ class CoachObservabilityTest {
                 new CoachRateGuard(new InMemoryEphemeralStateStore(appClock),
                         100, Duration.ofMinutes(1)),
                 new ModelCircuitBreaker(3, Duration.ofSeconds(30), appClock),
-                scheduler, Duration.ofSeconds(5), Duration.ofSeconds(30), 2, appClock, metrics);
+                scheduler, Duration.ofSeconds(5), Duration.ofSeconds(30), 2, appClock, metrics,
+                mock(CoachConversationOwnershipService.class));
         return new Harness(service, model, scheduled, registry, meterClock);
     }
 

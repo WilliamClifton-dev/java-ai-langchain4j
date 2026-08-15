@@ -14,6 +14,7 @@ import com.atguigu.java.ai.langchain4j.coach.tool.CoachToolContext;
 import com.atguigu.java.ai.langchain4j.coach.tool.CoachTools;
 import com.atguigu.java.ai.langchain4j.knowledge.ReviewedKnowledgeRetriever;
 import com.atguigu.java.ai.langchain4j.infrastructure.redis.EphemeralStateStore;
+import com.atguigu.java.ai.langchain4j.store.CoachConversationOwnershipService;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.service.AiServices;
@@ -108,10 +109,11 @@ public class CoachStreamingConfig {
     CoachStreamingService coachStreamingService(
             CoachStreamingModel model, CoachRateGuard rateGuard, ModelCircuitBreaker breaker,
             ScheduledExecutorService coachStreamScheduler, Clock clock, CoachMetrics metrics,
+            CoachConversationOwnershipService ownership,
             @Value("${hbti.coach.streaming.first-token-timeout:PT5S}") Duration firstTokenTimeout,
             @Value("${hbti.coach.streaming.total-timeout:PT30S}") Duration totalTimeout,
             @Value("${hbti.coach.streaming.max-concurrent:5}") int maxConcurrent) {
         return new CoachStreamingService(model, rateGuard, breaker, coachStreamScheduler,
-                firstTokenTimeout, totalTimeout, maxConcurrent, clock, metrics);
+                firstTokenTimeout, totalTimeout, maxConcurrent, clock, metrics, ownership);
     }
 }

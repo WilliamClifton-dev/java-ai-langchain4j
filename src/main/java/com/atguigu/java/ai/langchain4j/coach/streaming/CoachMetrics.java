@@ -10,7 +10,8 @@ import java.util.Set;
 public final class CoachMetrics {
     private static final Set<String> STREAM_OUTCOMES = Set.of(
             "cancelled", "circuit_open", "completed", "concurrency_limited",
-            "first_token_timeout", "provider_error", "rate_limited", "total_timeout"
+            "first_token_timeout", "ownership_conflict", "ownership_unavailable",
+            "provider_error", "rate_limited", "total_timeout"
     );
     private static final Set<String> SSE_EVENTS = Set.of(
             "completion", "error", "metadata", "token"
