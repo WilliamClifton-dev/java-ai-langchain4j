@@ -33,6 +33,8 @@ The target architecture is delivered incrementally. A capability is considered i
 | Coach streaming resilience | named SSE JSON events, explicit async tool identity, first-token/total timeouts, concurrency cap, circuit breaker and outage-isolation tests | implemented |
 | Redis ephemeral controls | shared expiring rate counters, digest-only assessment leases, public-definition cache and explicit outage-mode tests | implemented |
 | Observability and audit | validated request correlation, JSON logs, implemented-workflow audit records, bounded Micrometer metrics and distinct dependency probes | implemented |
+| Account data lifecycle | owner-scoped export, confirmed deletion, audit events, conversation cascade and active-account JWT validation | implemented |
+| API contract and browser boundary | OpenAPI 1.0.0 path baseline, explicit CORS origins and security-header tests | implemented |
 
 Operational SLOs below remain release targets until Task 23 records load, recovery, and rollback evidence. Passing unit tests does not by itself make the service production or enterprise grade.
 
@@ -134,7 +136,7 @@ sequenceDiagram
 | Assessment | `assessment_definition`, `assessment_item`, `assessment_attempt`, `assessment_answer`, `assessment_score` | definition version immutable after publication |
 | Planning | `weight_plan`, `weight_plan_version` | one aggregate per user; one authoritative active-version pointer; immutable target payload per version |
 | Tracking | `daily_metric`, `training_log`, `nutrition_log`, `weekly_review` | user/date/type uniqueness where applicable |
-| Coach | `coach_conversation`, `coach_message` | server-derived owner namespace; `(conversation_id, sequence_no)` unique; relational owner FK pending Task 18 lifecycle work |
+| Coach | `coach_conversation`, `coach_message` | server-derived owner namespace; `(conversation_id, sequence_no)` unique; nullable relational owner FK with delete cascade for claimed conversations |
 | Knowledge | `knowledge_document`, `knowledge_document_version`, `knowledge_chunk` | unique source, immutable content version, ordered chunks and reviewed lifecycle |
 | Governance | `audit_event` | append-only security-relevant history with nullable actor and bounded request correlation |
 
@@ -146,7 +148,7 @@ Flyway V3 introduces the profile and screening boundary. `user_profile` stores o
 
 ### Chat Memory
 
-The durable message table stores one message per row. The LangChain4j memory adapter returns a bounded ordered window. Updating memory is transactional. Concurrent writes serialize per conversation. Protected coach requests derive the internal memory key as a SHA-256 namespace over the JWT subject and client conversation ID, so two users choosing the same public identifier do not share context. The V1 conversation table does not yet retain a relational `user_id`; Task 18 must add that ownership path before authenticated export/deletion can be considered complete.
+The durable message table stores one message per row. The LangChain4j memory adapter returns a bounded ordered window. Updating memory is transactional. Concurrent writes serialize per conversation. Protected coach requests derive the internal memory key as a SHA-256 namespace over the JWT subject and client conversation ID, so two users choosing the same public identifier do not share context. Flyway V12 also claims conversations with a nullable relational `user_id`; conflicting owners fail closed, and owned conversations cascade on account deletion. Legacy rows remain unclaimed until an authenticated request explicitly claims them.
 
 ### Migrations
 
@@ -164,7 +166,7 @@ Flyway migrations are append-only after merge. Production startup validates migr
 - Every protected application command receives an authenticated user ID.
 - Mapper queries include ownership predicates; fetching by resource ID and checking later is insufficient.
 - Profile and screening requests never accept a user ID. Their owner is always the validated JWT subject, and screening reads include that owner in SQL.
-- Registration, login success/failure, refresh, token reuse, logout and successful plan activation create best-effort audit events without credentials, tokens, health facts or model content. Export and deletion events are not claimed until Task 18 implements those workflows.
+- Registration, login success/failure, refresh, token reuse, logout, successful plan activation, successful export, deletion request and anonymous deletion completion create best-effort audit events without credentials, tokens, health facts or model content.
 
 ## Deterministic And AI Boundaries
 
@@ -260,6 +262,7 @@ Public `/actuator/health/liveness` contains process liveness only. Public `/actu
 - 20 concurrent interactive sessions and 5 concurrent model generations.
 - 100 API requests per second short burst; 20 sustained requests per second excluding model tokens.
 - Maximum 4,000 characters per user message, 8,000 input tokens, 1,500 output tokens, and 10 tool calls per request.
+- A model request is capped at 0.02 USD equivalent at the provider-account policy boundary; provider usage must be recorded as bounded aggregates before billing-based enforcement is enabled. Token counts in L1 telemetry are emitted chunks, not billing usage.
 
 ### L1 Internal SLO
 
@@ -276,8 +279,9 @@ Promotion to L2 requires 30 days of measured compliance, load-test evidence, on-
 
 ## Data Lifecycle
 
-- Authenticated export and deletion workflows remain Task 18 acceptance work; their audit enum values are reserved but are not emitted.
-- Account deletion, retention enforcement and backup expiry are target policies, not current implementation evidence.
+- Authenticated export and deletion are implemented for the L1 bounded dataset. Export is owner-scoped and excludes credentials, token material, idempotency/payload hashes and model nonces. Deletion requires the exact `DELETE_MY_ACCOUNT` confirmation, clears cookies, anonymizes retained audit rows, hard-deletes the account and owned data, and preserves global HBTI definitions and reviewed knowledge.
+- Immediate account-status validation rejects access JWTs for missing, locked or deleted accounts. This is a database-backed invalidation check, not a claim that every already-issued token is cryptographically revoked.
+- Current L1 retention is bounded by the account lifecycle implementation and operational backup policy: export/deletion requests are synchronous and capped at 1,000 primary rows and 10,000 nested rows. Task 23 must still publish the exact backup expiry schedule, restore evidence and any scheduled retention worker before public launch.
 - L1 target: MySQL RPO 1 hour and RTO 4 hours, verified by restoration exercise.
 - Prompt, model, assessment and knowledge versions remain traceable after user-content deletion without retaining deleted user content.
 

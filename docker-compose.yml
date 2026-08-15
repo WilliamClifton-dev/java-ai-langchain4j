@@ -39,6 +39,8 @@ services:
       MINIMAX_API_KEY: ${MINIMAX_API_KEY}
       AUTH_SIGNING_KEY: ${AUTH_SIGNING_KEY:-local-development-signing-key-min-32-bytes}
       AUTH_SECURE_COOKIES: "false"
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      CORS_MAX_AGE: ${CORS_MAX_AGE:-PT1H}
     ports:
       - "8080:8080"
     healthcheck:
