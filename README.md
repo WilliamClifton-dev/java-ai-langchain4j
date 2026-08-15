@@ -23,7 +23,7 @@ HBTI 目前是探索性的行为倾向评估，不是医学诊断、疾病筛查
 - 不访问外部模型或数据库的默认测试套件
 - 可显式启用的真实模型 Smoke Test
 
-尚未完成：Web 前端、数据导出/删除、完整 OpenAPI 契约与依赖审计、负载/AI 评测、备份恢复和回滚演练。当前版本仍是 L1 公共测试版建设阶段，不是已完成生产验收或企业级认证的产品。
+尚未完成：Web 前端、依赖漏洞处置与审计报告、负载/AI 评测、备份恢复和回滚演练。账户数据导出/删除和 OpenAPI 路径契约已经实现并有目标测试，但 Task 18 仍需通过供应链门禁。当前版本仍是 L1 公共测试版建设阶段，不是已完成生产验收或企业级认证的产品。
 
 ## 技术栈
 
@@ -117,6 +117,7 @@ src/main/resources/prompts/hbti/
 
 ## 文档
 
+- [AI 模型接力交接文档](docs/AI_HANDOFF.md)
 - [现行目标架构](docs/architecture/hbti-coach-architecture.md)
 - [历史演进方案](docs/architecture/xiaozhi-to-hbti-coach-architecture.md)
 - [ADR-001：直接进入 HBTI Coach](docs/decisions/ADR-001-start-hbti-coach-directly.md)
