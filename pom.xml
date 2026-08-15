@@ -11,15 +11,15 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.6</version> <!-- 和你 properties 里的版本保持一致 -->
-        <relativePath/> <!-- 这行代码的意思是：别在本地文件夹找，直接去网上下载 -->
+        <version>3.3.5</version>
+        <relativePath/>
     </parent>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <spring-boot.version>3.2.6</spring-boot.version>
+        <spring-boot.version>3.3.5</spring-boot.version>
         <knife4j.version>4.3.0</knife4j.version>
         <langchain4j.version>1.0.0-beta3</langchain4j.version>
         <mybatis-spring-boot.version>3.0.3</mybatis-spring-boot.version>
