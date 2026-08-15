@@ -16,7 +16,7 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("HBTI Coach API")
-                        .version("1.0-SNAPSHOT")
+                        .version("1.0.0")
                         .description("Personal weight management assistant with AI coaching"))
                 .addSecurityItem(new SecurityRequirement().addList("bearer-jwt"))
                 .components(new Components()
