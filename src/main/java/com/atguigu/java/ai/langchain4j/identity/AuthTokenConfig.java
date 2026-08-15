@@ -45,7 +45,8 @@ public class AuthTokenConfig {
     }
 
     @Bean
-    JwtDecoder jwtDecoder(SecretKey secretKey, AuthProperties properties) {
+    JwtDecoder jwtDecoder(SecretKey secretKey, AuthProperties properties,
+                          UserAccountMapper userAccountMapper) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(secretKey)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
@@ -57,7 +58,8 @@ public class AuthTokenConfig {
                         ));
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(properties.issuer()),
-                accessTokenValidator
+                accessTokenValidator,
+                new AccountStatusTokenValidator(userAccountMapper)
         ));
         return decoder;
     }
