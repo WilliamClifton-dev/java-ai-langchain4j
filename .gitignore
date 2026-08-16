@@ -62,3 +62,11 @@ hs_err_pid*
 
 # Local Codex execution ledger
 .codex/plan-runs/
+
+# Frontend build and dependency output
+web/node_modules/
+web/dist/
+web/coverage/
+web/*.tsbuildinfo
+web/vite.config.js
+web/vite.config.d.ts

@@ -85,6 +85,30 @@ common infrastructure supports modules without owning domain rules
 | Knowledge | document versions, chunks, citations and evaluation corpus | metadata yes |
 | Common | errors, clocks, IDs, security primitives and observability adapters | no domain data |
 
+### Web Application Boundary
+
+The React and TypeScript application under `web/` is a browser client of the
+versioned `/api/v1` contract. It does not reproduce domain calculations or
+authorization rules. Task 19 implements the account boundary and responsive
+application shell; assessment/planning and tracking/coach screens remain Tasks
+20 and 21.
+
+- Every API request uses `credentials: include`; browser code never reads the
+  `HBTI_ACCESS` or `HBTI_REFRESH` HttpOnly cookies.
+- The client keeps only the non-sensitive `{user, accessExpiresAt}` session
+  summary in React memory. It stores no token or personal fact in local or
+  session storage.
+- Mutations first obtain the server-issued CSRF header name and value from
+  `/api/v1/auth/csrf`. The typed HTTP client preserves the backend error
+  envelope instead of inferring failures from message text.
+- Application startup reads `/api/v1/auth/session`. An expired access cookie
+  receives one refresh-cookie recovery attempt before protected routes direct
+  the user to login.
+- Server-confirmed logout is required before the browser clears its session
+  summary; a failed revocation remains visible and retryable.
+- Vite proxies `/api` and `/actuator` only during local development. Production
+  origin and static-asset delivery are Task 22 deployment concerns.
+
 ## Dependency Rules
 
 - Controllers translate HTTP contracts to application commands.
@@ -287,7 +311,13 @@ Promotion to L2 requires 30 days of measured compliance, load-test evidence, on-
 
 ## Deployment
 
-The current Compose environment contains the backend, MySQL and Redis; the web application and telemetry backend remain delivery work. Its backend health check uses readiness. Production uses managed equivalents where available. Health endpoints separate liveness from readiness. Schema migration is a controlled release step. Secrets enter through the deployment platform and never image layers or source files.
+The current Compose environment contains the backend, MySQL and Redis. The web
+application now has a reproducible npm lock file, tests and a production build,
+but its container/static hosting and the telemetry backend remain Task 22
+delivery work. The backend health check uses readiness. Production uses managed
+equivalents where available. Health endpoints separate liveness from readiness.
+Schema migration is a controlled release step. Secrets enter through the
+deployment platform and never image layers or source files.
 
 Deployments are rolling or blue/green once more than one instance exists. Every release records artifact version, migration range, prompt/model policy, evaluation report and rollback command.
 

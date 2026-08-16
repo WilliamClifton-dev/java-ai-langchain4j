@@ -1,0 +1,112 @@
+export interface AuthUser {
+  id: string;
+  email: string;
+}
+
+export interface AuthSession {
+  user: AuthUser;
+  accessExpiresAt: string;
+}
+
+export interface AuthCredentials {
+  email: string;
+  password: string;
+}
+
+interface ApiErrorEnvelope {
+  error?: {
+    code?: string;
+    message?: string;
+    details?: Record<string, string>;
+  };
+}
+
+interface CsrfContract {
+  headerName: string;
+  token: string;
+}
+
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+    public readonly details: Record<string, string> = {},
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+let csrfPromise: Promise<CsrfContract> | undefined;
+
+async function parseBody(response: Response): Promise<unknown> {
+  if (response.status === 204) {
+    return undefined;
+  }
+
+  const contentType = response.headers.get('Content-Type') ?? '';
+  if (!contentType.includes('application/json')) {
+    return undefined;
+  }
+
+  return response.json();
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers);
+  headers.set('Accept', 'application/json');
+  if (init.body && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const response = await fetch(path, {
+    ...init,
+    headers,
+    credentials: 'include',
+  });
+  const body = await parseBody(response);
+
+  if (!response.ok) {
+    const envelope = (body ?? {}) as ApiErrorEnvelope;
+    throw new ApiError(
+      response.status,
+      envelope.error?.code ?? 'REQUEST_FAILED',
+      envelope.error?.message ?? '请求未能完成，请稍后重试',
+      envelope.error?.details ?? {},
+    );
+  }
+
+  return body as T;
+}
+
+function csrfContract(): Promise<CsrfContract> {
+  csrfPromise ??= request<CsrfContract>('/api/v1/auth/csrf').catch((error: unknown) => {
+    csrfPromise = undefined;
+    throw error;
+  });
+  return csrfPromise;
+}
+
+async function mutate<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const csrf = await csrfContract();
+  const headers = new Headers(init.headers);
+  headers.set(csrf.headerName, csrf.token);
+  return request<T>(path, { ...init, method: init.method ?? 'POST', headers });
+}
+
+export const api = {
+  getSession: () => request<AuthSession>('/api/v1/auth/session'),
+  register: (credentials: AuthCredentials) => mutate<AuthSession>('/api/v1/auth/register', {
+    body: JSON.stringify(credentials),
+  }),
+  login: (credentials: AuthCredentials) => mutate<AuthSession>('/api/v1/auth/login', {
+    body: JSON.stringify(credentials),
+  }),
+  refresh: () => mutate<AuthSession>('/api/v1/auth/refresh'),
+  logout: () => mutate<void>('/api/v1/auth/logout'),
+};
+
+export function resetCsrfTokenForTests() {
+  csrfPromise = undefined;
+}
