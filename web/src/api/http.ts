@@ -1,3 +1,13 @@
+import type {
+  HbtiDefinition,
+  HbtiResult,
+  Profile,
+  ProfileInput,
+  SafetyScreening,
+  ScreeningInput,
+  WeightPlan,
+} from './domain';
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -105,7 +115,40 @@ export const api = {
   }),
   refresh: () => mutate<AuthSession>('/api/v1/auth/refresh'),
   logout: () => mutate<void>('/api/v1/auth/logout'),
+  getProfile: () => request<Profile>('/api/v1/profile'),
+  saveProfile: (profile: ProfileInput) => mutate<Profile>('/api/v1/profile', {
+    method: 'PUT',
+    body: JSON.stringify(profile),
+  }),
+  getCurrentScreening: () => request<SafetyScreening>('/api/v1/profile/screenings/current'),
+  createScreening: (answers: ScreeningInput) => mutate<SafetyScreening>('/api/v1/profile/screenings', {
+    body: JSON.stringify(answers),
+  }),
+  getHbtiDefinition: (version: string) => request<HbtiDefinition>(
+    `/api/v1/assessments/hbti/definitions/${encodeURIComponent(version)}`,
+  ),
+  getCurrentHbtiResult: () => request<HbtiResult>('/api/v1/assessments/hbti/results/current'),
+  submitHbti: (definitionVersion: string, answers: Array<{ itemKey: string; value: number }>, idempotencyKey: string) =>
+    mutate<{ result: HbtiResult; replayed: boolean }>('/api/v1/assessments/hbti/submissions', {
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify({ definitionVersion, answers }),
+    }),
+  getActivePlan: () => request<WeightPlan>('/api/v1/plans/active'),
+  createPlanDraft: (goal: WeightPlan['goal'], idempotencyKey: string) => mutate<WeightPlan>('/api/v1/plans/drafts', {
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({ goal }),
+  }),
+  transitionPlan: (plan: Pick<WeightPlan, 'planId' | 'id'>, action: 'validation' | 'confirmation') =>
+    mutate<WeightPlan>(`/api/v1/plans/${encodeURIComponent(plan.planId)}/versions/${encodeURIComponent(plan.id)}/${action}`),
+  activatePlan: (plan: Pick<WeightPlan, 'planId' | 'id'>, idempotencyKey: string) =>
+    mutate<WeightPlan>(`/api/v1/plans/${encodeURIComponent(plan.planId)}/versions/${encodeURIComponent(plan.id)}/activation`, {
+      headers: { 'Idempotency-Key': idempotencyKey },
+    }),
 };
+
+export function isApiError(error: unknown, code?: string): error is ApiError {
+  return error instanceof ApiError && (code === undefined || error.code === code);
+}
 
 export function resetCsrfTokenForTests() {
   csrfPromise = undefined;

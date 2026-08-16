@@ -60,4 +60,22 @@ describe('API client', () => {
       details: { field: 'credentials' },
     } satisfies Partial<ApiError>);
   });
+
+  it('uses CSRF for profile replacement', async () => {
+    const profile = {
+      dateOfBirth: '1990-01-01', calculationSex: 'FEMALE' as const, heightCm: 165,
+      currentWeightKg: 70, targetWeightKg: 60, activityLevel: 'MODERATE' as const,
+      timeZone: 'Asia/Hong_Kong',
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ headerName: 'X-XSRF-TOKEN', token: 'csrf-value' }))
+      .mockResolvedValueOnce(jsonResponse({ userId: 'u1', ...profile }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await api.saveProfile(profile);
+
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/v1/profile');
+    expect(fetchMock.mock.calls[1][1]).toEqual(expect.objectContaining({ method: 'PUT', credentials: 'include' }));
+    expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get('X-XSRF-TOKEN')).toBe('csrf-value');
+  });
 });

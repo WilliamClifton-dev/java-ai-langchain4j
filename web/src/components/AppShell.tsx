@@ -1,6 +1,6 @@
-import { LogOut, ShieldCheck } from 'lucide-react';
+import { ClipboardList, Home, LogOut, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
 
@@ -44,6 +44,10 @@ export function AppShell() {
           </button>
         </div>
       </header>
+      <nav className="primary-nav" aria-label="主要导航">
+        <NavLink to="/" end><Home size={17} />概览</NavLink>
+        <NavLink to="/profile"><ClipboardList size={17} />档案</NavLink>
+      </nav>
       <div className="context-bar">
         <ShieldCheck size={16} aria-hidden="true" />
         <span>探索性行为倾向工具，不替代医疗诊断</span>

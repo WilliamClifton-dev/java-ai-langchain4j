@@ -101,4 +101,29 @@ describe('account experience', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('当前会话仍然有效');
     expect(screen.getByRole('heading', { name: '身份信息' })).toBeInTheDocument();
   });
+
+  it('restores the persisted profile and safety gate', async () => {
+    window.history.replaceState({}, '', '/profile');
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(session))
+      .mockResolvedValueOnce(jsonResponse({
+        userId: 'account-123', dateOfBirth: '1990-01-01', calculationSex: 'FEMALE',
+        heightCm: 165, currentWeightKg: 70, targetWeightKg: 60,
+        activityLevel: 'MODERATE', timeZone: 'Asia/Hong_Kong',
+      }))
+      .mockResolvedValueOnce(jsonResponse({
+        id: 'screen-1', version: 1, status: 'ELIGIBLE', automaticPlanningAllowed: true,
+        reasonCodes: [], guidance: 'Automatic planning is available.', createdAt: '2026-08-16T12:00:00Z',
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: '个人档案与安全筛查' })).toBeInTheDocument();
+    expect(await screen.findByText('可以进入自动计划')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('70')).toBeInTheDocument();
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      '/api/v1/auth/session', '/api/v1/profile', '/api/v1/profile/screenings/current',
+    ]);
+  });
 });
