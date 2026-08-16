@@ -270,4 +270,107 @@ describe('account experience', () => {
     await user.click(screen.getByRole('button', { name: '返回当前计划' }));
     expect(await screen.findByText('当前计划已启用')).toBeInTheDocument();
   });
+
+  it('records explicit-unit daily facts and refreshes the selected-day summary', async () => {
+    window.history.replaceState({}, '', '/tracking');
+    let saved = false;
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path === '/api/v1/auth/session') return Promise.resolve(jsonResponse(session));
+      if (path === '/api/v1/auth/csrf') return Promise.resolve(jsonResponse({ headerName: 'X-XSRF-TOKEN', token: 'csrf-value' }));
+      if (path.startsWith('/api/v1/tracking/days/')) return Promise.resolve(jsonResponse({
+        localDate: path.split('/').at(-1),
+        metric: saved ? { id: 'metric-1', localDate: path.split('/').at(-1), weightKg: 70.2, steps: 8000, activityMinutes: 45, sleepMinutes: 450, sleepQuality: 4, createdAt: '2026-08-16T12:00:00Z' } : null,
+        nutrition: null, trainingSessions: [], trainingMinutes: 0,
+      }));
+      if (path === '/api/v1/tracking/daily-metrics') {
+        saved = true;
+        return Promise.resolve(jsonResponse({ record: { id: 'metric-1' }, replayed: false }, 201));
+      }
+      return Promise.reject(new Error(`unexpected request ${path}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: '每日执行记录' })).toBeInTheDocument();
+    await user.type(screen.getByLabelText('体重（kg）'), '70.2');
+    await user.type(screen.getByLabelText('步数（步）'), '8000');
+    await user.click(screen.getByRole('button', { name: '保存身体与活动记录' }));
+
+    expect(await screen.findByText('70.2 kg')).toBeInTheDocument();
+    const write = fetchMock.mock.calls.find((call) => call[0] === '/api/v1/tracking/daily-metrics');
+    expect(new Headers(write?.[1]?.headers).get('Idempotency-Key')).toBeTruthy();
+    expect(JSON.parse(write?.[1]?.body as string)).toMatchObject({ weightKg: 70.2, steps: 8000 });
+  });
+
+  it('renders a sparse weekly review as a proposal that does not change the plan', async () => {
+    window.history.replaceState({}, '', '/review');
+    const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
+      const path = String(input);
+      if (path === '/api/v1/auth/session') return Promise.resolve(jsonResponse(session));
+      if (path === '/api/v1/auth/csrf') return Promise.resolve(jsonResponse({ headerName: 'X-XSRF-TOKEN', token: 'csrf-value' }));
+      if (path === '/api/v1/tracking/weekly-reviews') return Promise.resolve(jsonResponse({
+        replayed: false,
+        review: {
+          id: 'review-1', planVersionId: 'plan-version-1', windowStart: '2026-08-10', windowEnd: '2026-08-16',
+          versionNo: 1, policyVersion: 'DETERMINISTIC_WEEKLY_REVIEW_V1', weightObservationDays: 1,
+          nutritionLoggedDays: 2, stepsObservedDays: 2, sleepObservedDays: 1, trainingDays: 1,
+          averageWeightKg: 70.2, weightTrendPercent: null, nutritionAdherencePercent: 50,
+          averageSteps: 7000, averageSleepMinutes: 420, totalTrainingMinutes: 45,
+          recommendation: 'INSUFFICIENT_DATA', proposedEnergyDeltaKcalPerDay: 0,
+          reason: 'More observations are required.', createdAt: '2026-08-16T12:00:00Z',
+          limitation: 'Proposed changes are not applied automatically.',
+        },
+      }, 201));
+      return Promise.reject(new Error(`unexpected request ${path}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: '七日回顾' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '生成七日回顾' }));
+
+    expect(await screen.findByRole('heading', { name: '数据不足' })).toBeInTheDocument();
+    expect(screen.getByText(/不会自动修改当前计划/)).toBeInTheDocument();
+    const request = fetchMock.mock.calls.find((call) => call[0] === '/api/v1/tracking/weekly-reviews');
+    expect(JSON.parse(request?.[1]?.body as string)).toEqual({ windowEnd: expect.any(String) });
+  });
+
+  it('streams a coach response without sending owner or tool permissions', async () => {
+    window.history.replaceState({}, '', '/coach');
+    const encoder = new TextEncoder();
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path === '/api/v1/auth/session') return Promise.resolve(jsonResponse(session));
+      if (path === '/api/v1/auth/csrf') return Promise.resolve(jsonResponse({ headerName: 'X-XSRF-TOKEN', token: 'csrf-value' }));
+      if (path === '/api/v1/coach/messages/stream') return Promise.resolve(new Response(new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode('event:metadata\ndata:{"conversationId":"c1","scene":"DAILY_CHECKIN"}\n\n'));
+          controller.enqueue(encoder.encode('event:token\ndata:{"sequence":1,"text":"先记录今天的完成情况。"}\n\n'));
+          controller.enqueue(encoder.encode('event:completion\ndata:{"conversationId":"c1"}\n\n'));
+          controller.close();
+        },
+      }), { status: 200, headers: { 'Content-Type': 'text/event-stream' } }));
+      return Promise.reject(new Error(`unexpected request ${path}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: '智能教练' })).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('对话场景'), 'DAILY_CHECKIN');
+    await user.type(screen.getByLabelText('你的问题'), '今天应该复盘什么？');
+    await user.click(screen.getByRole('button', { name: '发送消息' }));
+
+    expect(await screen.findByText('先记录今天的完成情况。')).toBeInTheDocument();
+    expect(screen.getByText('回复完成')).toBeInTheDocument();
+    const streamCall = fetchMock.mock.calls.find((call) => call[0] === '/api/v1/coach/messages/stream');
+    expect(JSON.parse(streamCall?.[1]?.body as string)).toEqual(expect.objectContaining({
+      scene: 'DAILY_CHECKIN', message: '今天应该复盘什么？',
+    }));
+    expect(JSON.parse(streamCall?.[1]?.body as string)).not.toHaveProperty('owner');
+    expect(JSON.parse(streamCall?.[1]?.body as string)).not.toHaveProperty('permissions');
+  });
 });

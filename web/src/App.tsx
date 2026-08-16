@@ -10,6 +10,9 @@ import { HomePage } from './pages/HomePage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AssessmentPage } from './pages/AssessmentPage';
 import { PlanPage } from './pages/PlanPage';
+import { TrackingPage } from './pages/TrackingPage';
+import { WeeklyReviewPage } from './pages/WeeklyReviewPage';
+import { CoachPage } from './pages/CoachPage';
 
 export function App() {
   const [queryClient] = useState(() => new QueryClient({
@@ -29,6 +32,9 @@ export function App() {
               <Route path="profile" element={<ProfilePage />} />
               <Route path="assessment" element={<AssessmentPage />} />
               <Route path="plan" element={<PlanPage />} />
+              <Route path="tracking" element={<TrackingPage />} />
+              <Route path="review" element={<WeeklyReviewPage />} />
+              <Route path="coach" element={<CoachPage />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
