@@ -62,8 +62,8 @@ export function CoachPage() {
     </header>
     <div className="coach-layout">
       <form className="coach-composer" onSubmit={submit}>
-        <label className="field"><span>对话场景</span><select aria-label="对话场景" value={scene} onChange={(event) => setScene(event.target.value as CoachScene)} disabled={status === 'streaming'}>{scenes.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}</select></label>
-        <label className="field"><span>你的问题</span><textarea aria-label="你的问题" rows={7} maxLength={4000} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="写下你想复盘的情况" disabled={status === 'streaming'} /></label>
+        <label className="field" htmlFor="coach-scene"><span>对话场景</span><select id="coach-scene" name="scene" aria-label="对话场景" value={scene} onChange={(event) => setScene(event.target.value as CoachScene)} disabled={status === 'streaming'}>{scenes.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}</select></label>
+        <label className="field" htmlFor="coach-message"><span>你的问题</span><textarea id="coach-message" name="message" aria-label="你的问题" rows={7} maxLength={4000} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="写下你想复盘的情况" disabled={status === 'streaming'} /></label>
         <div className="coach-actions">{status === 'streaming' ? <button className="button button-secondary" type="button" onClick={() => abort.current?.abort()}><CircleStop size={17} />停止生成</button> : <button className="button button-primary" type="submit" disabled={!message.trim()}><Send size={17} />发送消息</button>}</div>
       </form>
       <section className="coach-response" aria-live="polite" aria-busy={status === 'streaming'}>

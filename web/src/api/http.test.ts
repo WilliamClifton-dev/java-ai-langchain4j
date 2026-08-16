@@ -140,4 +140,23 @@ describe('API client', () => {
       conversationId: 'c1', scene: 'DAILY_CHECKIN', message: '今天怎么开始？',
     });
   });
+
+  it('preserves a typed retryable terminal coach error', async () => {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({ start(controller) {
+      controller.enqueue(encoder.encode('event:metadata\ndata:{"conversationId":"c1","scene":"GENERAL_CHAT"}\n\n'));
+      controller.enqueue(encoder.encode('event:error\ndata:{"code":"MODEL_TIMEOUT","message":"Timed out","retryable":true}\n\n'));
+      controller.close();
+    } });
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ headerName: 'X-XSRF-TOKEN', token: 'csrf-value' }))
+      .mockResolvedValueOnce(new Response(stream, { headers: { 'Content-Type': 'text/event-stream' } })));
+    const events: unknown[] = [];
+
+    await api.streamCoach({ conversationId: 'c1', scene: 'GENERAL_CHAT', message: 'Hello' }, {
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(events.at(-1)).toEqual({ type: 'error', code: 'MODEL_TIMEOUT', message: 'Timed out', retryable: true });
+  });
 });

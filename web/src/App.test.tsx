@@ -373,4 +373,29 @@ describe('account experience', () => {
     expect(JSON.parse(streamCall?.[1]?.body as string)).not.toHaveProperty('owner');
     expect(JSON.parse(streamCall?.[1]?.body as string)).not.toHaveProperty('permissions');
   });
+
+  it('lets the user cancel an in-flight coach response', async () => {
+    window.history.replaceState({}, '', '/coach');
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path === '/api/v1/auth/session') return Promise.resolve(jsonResponse(session));
+      if (path === '/api/v1/auth/csrf') return Promise.resolve(jsonResponse({ headerName: 'X-XSRF-TOKEN', token: 'csrf-value' }));
+      if (path === '/api/v1/coach/messages/stream') return Promise.resolve(new Response(new ReadableStream({
+        start(controller) {
+          init?.signal?.addEventListener('abort', () => controller.error(new DOMException('Aborted', 'AbortError')));
+        },
+      }), { status: 200, headers: { 'Content-Type': 'text/event-stream' } }));
+      return Promise.reject(new Error(`unexpected request ${path}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(await screen.findByLabelText('你的问题'), '停止这次回复');
+    await user.click(screen.getByRole('button', { name: '发送消息' }));
+    await user.click(await screen.findByRole('button', { name: '停止生成' }));
+
+    expect(await screen.findByText('已停止')).toBeInTheDocument();
+    expect(screen.queryByText('回复完成')).not.toBeInTheDocument();
+  });
 });

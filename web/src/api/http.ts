@@ -226,7 +226,7 @@ async function streamCoach(
 
   while (true) {
     const { value, done } = await reader.read();
-    buffer += decoder.decode(value, { stream: !done }).replaceAll('\r\n', '\n');
+    buffer = (buffer + decoder.decode(value, { stream: !done })).replaceAll('\r\n', '\n');
     let boundary = buffer.indexOf('\n\n');
     while (boundary >= 0) {
       dispatch(buffer.slice(0, boundary));
