@@ -2,19 +2,19 @@
 
 ## 项目概述
 
-HBTI Coach 是基于 Spring Boot 3.2.6 和 LangChain4j 1.0.0-beta3 构建的个性化体重管理助手。项目展示了如何将确定性业务规则与 AI 能力安全结合。
+HBTI Coach 是基于 Spring Boot 3.5.16 和 LangChain4j 1.0.0-beta3 构建的个性化体重管理助手。项目展示了如何将确定性业务规则与 AI 能力安全结合。
 
 **核心理念**：AI 负责解释和对话，代码负责计算、授权和数据完整性。
 
 ## 技术栈
 
-- **后端框架**：Spring Boot 3.2.6
+- **后端框架**：Spring Boot 3.5.16
 - **AI 集成**：LangChain4j 1.0.0-beta3
 - **数据库**：MySQL 8（主存储）+ H2（测试）
 - **缓存/限流**：Redis 7
-- **持久化**：MyBatis 3.0.3 + Flyway
+- **持久化**：MyBatis 3.0.5 + Flyway
 - **安全**：Spring Security + JWT
-- **API 文档**：Knife4j (OpenAPI 3)
+- **API 文档**：Springdoc OpenAPI 2.8.17
 - **构建工具**：Maven
 - **容器化**：Docker + Docker Compose
 

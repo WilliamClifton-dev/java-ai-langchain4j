@@ -3,7 +3,7 @@
 > Last verified: 2026-08-16
 > Repository: `D:\Projects\java-ai-langchain4j`
 > Branch: `codex/hbti-platform`
-> Handoff baseline commit: `ed02122`
+> Handoff baseline: current branch HEAD; verify with `git rev-parse HEAD`
 
 ## 1. Prompt For The Next Model
 
@@ -41,8 +41,7 @@ Default tests must not require an external database, Redis or model provider. Ne
 log or commit credentials, tokens, health facts, assessment answers, prompts or model
 content.
 
-Current priority: finish Task 18 dependency vulnerability triage without hiding
-scanner failures, then implement Tasks 19-21 as the real Web product, followed by
+Current priority: implement Tasks 19-21 as the real Web product, followed by
 Tasks 22-24 release evidence and final handoff. Keep architecture, ADRs, API docs,
 learning docs and evidence synchronized with behavior.
 ```
@@ -166,33 +165,23 @@ API details live in `docs/api/`. Ownership is never accepted from request bodies
 Cookie-authenticated writes require CSRF. Browser auth cookies remain HTTP-only and
 secure in production.
 
-## 7. Remaining Work
+## 7. Completion Checkpoints And Remaining Work
 
 ### Task 18: OpenAPI And Security Hardening
 
-Status: **in progress**. The implementation and backend verification pass, but
-the dependency advisory gate is intentionally still open.
+Status: **complete**.
 
-Supply-chain audit and Spring Boot upgrade completed:
+Supply-chain audit and framework upgrade completed:
 
-- ✅ Spring Boot 3.2.6 → 3.3.5 (resolved EOL status and major CVEs)
-- ✅ CVE-2024-22233 (Spring Framework DoS, CVSS 7.5) fixed
-- ✅ CVE-2024-38808 (Spring Security SpEL CPU exhaustion) patched
-- ✅ Tomcat, Jackson, Netty, Logback updated via BOM
-- ✅ Full test suite passes (132 tests, 0 failures, 0 errors; 1 opt-in external model test skipped)
-- ✅ LangChain4j 1.0.0-beta3 and Knife4j 4.3.0 compatibility verified
-- ✅ Audit report: `docs/security/DEPENDENCY_AUDIT_2026-08-15.md`
-
-Remaining advisory triage: 95 OSV matches analyzed by component family; 9 critical
-families resolved via Spring Boot upgrade; 86 individual advisories still require
-reachability, fixed-version, mitigation and review-date evidence. They cannot be
-silently deferred while claiming the Task 18 acceptance gate is complete.
-
-Spring Boot 3.4.x upgrade blocked by Knife4j incompatibility (ControllerAdviceBean API 
-change). Current 3.3.5 baseline acceptable for L1 beta with documented risks.
-
-Evidence: commits `ff1e0a0` and `8bb5534`, test log
-`tmp/upgrade-test-3.3.5.log`, audit report and the current full-suite result above.
+- Spring Boot 3.5.16, Springdoc 2.8.17 and MyBatis Starter 3.0.5.
+- Security BOM overrides keep Jackson 2.21.5, Netty 4.1.136.Final and Log4j
+  2.26.1 from being downgraded by the legacy LangChain4j BOM.
+- OpenNLP is explicitly managed at 2.5.11.
+- `scripts/security/osv-audit.ps1` scanned 126 runtime dependencies with 0
+  current OSV findings.
+- Full suite passes: 132 tests, 0 failures, 0 errors and 1 opt-in external model
+  test skipped.
+- Audit report: `docs/security/DEPENDENCY_AUDIT_2026-08-15.md`.
 
 ### Tasks 19-21: Web Product
 
@@ -226,14 +215,12 @@ branch diff and run every final gate.
 ## 8. Recommended Execution Order
 
 1. Reconcile Git status and the durable ledger before editing.
-2. Finish Task 18 dependency triage and dependency upgrades; rerun targeted and full
-   backend verification before checking Task 18.
-3. Implement Tasks 19-21 as thin, tested vertical Web slices against the committed API
+2. Implement Tasks 19-21 as thin, tested vertical Web slices against the committed API
    contract. Do not invent duplicate frontend business rules.
-4. Extend CI and Compose for the Web application and record a health-asserting smoke run.
-5. Produce Task 23 evaluation, load, restore and rollback evidence using documented L1
+3. Extend CI and Compose for the Web application and record a health-asserting smoke run.
+4. Produce Task 23 evaluation, load, restore and rollback evidence using documented L1
    assumptions and SLOs.
-6. Complete Task 24 documentation/review and only then run the global completion audit.
+5. Complete Task 24 documentation/review and only then run the global completion audit.
 
 ## 9. Verification Commands
 
@@ -244,6 +231,7 @@ mvn -q clean test
 mvn -q -DskipTests package
 docker compose config --quiet
 git diff --check
+./scripts/security/osv-audit.ps1
 ```
 
 Once `web/` exists, these become mandatory:
@@ -305,11 +293,9 @@ config expansion is not an end-to-end runtime smoke test.
 
 At this handoff baseline:
 
-- Task 18 remains unchecked even though its implementation and targeted tests are
-  substantially complete; the missing supply-chain gate is intentional, not stale.
 - Dependency audit intermediate files under `tmp/` are disposable evidence inputs and
   must not be treated as a committed audit report.
-- The current dependency audit data was retrieved from OSV on 2026-08-15. Re-query the
+- The current dependency audit data was retrieved from OSV on 2026-08-16. Re-query the
   database after dependency changes because advisory status and fix ranges can change.
 
 ## 13. Completion Standard
