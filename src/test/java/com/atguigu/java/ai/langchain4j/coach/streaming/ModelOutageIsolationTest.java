@@ -6,6 +6,7 @@ import com.atguigu.java.ai.langchain4j.planning.HealthCalculationInput;
 import com.atguigu.java.ai.langchain4j.planning.HealthCalculator;
 import com.atguigu.java.ai.langchain4j.profile.ActivityLevel;
 import com.atguigu.java.ai.langchain4j.profile.CalculationSex;
+import com.atguigu.java.ai.langchain4j.store.CoachConversationOwnershipService;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,10 @@ class ModelOutageIsolationTest {
 
     @MockBean(name = "chatModel")
     private ChatLanguageModel chatModel;
+
+    // This test isolates provider outage behavior; ownership is covered by dedicated tests.
+    @MockBean
+    private CoachConversationOwnershipService ownership;
 
     @Autowired
     private CoachStreamingService streamingService;
