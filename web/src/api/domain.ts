@@ -96,3 +96,114 @@ export interface WeightPlan {
   replacedAt: string | null;
   guidance: string;
 }
+
+export interface DailyMetricInput {
+  localDate: string;
+  weightKg?: number;
+  steps?: number;
+  activityMinutes?: number;
+  sleepMinutes?: number;
+  sleepQuality?: number;
+}
+
+export interface DailyMetric extends DailyMetricInput {
+  id: string;
+  createdAt: string;
+}
+
+export interface NutritionInput {
+  localDate: string;
+  energyKcal: number;
+  proteinG: number;
+  carbohydrateG: number;
+  fatG: number;
+}
+
+export interface NutritionLog extends NutritionInput {
+  id: string;
+  createdAt: string;
+}
+
+export type TrainingType = 'STRENGTH' | 'CARDIO' | 'MOBILITY' | 'SPORT' | 'OTHER';
+export type TrainingIntensity = 'LOW' | 'MODERATE' | 'HIGH';
+
+export interface TrainingInput {
+  localDate: string;
+  trainingType: TrainingType;
+  durationMinutes: number;
+  intensity: TrainingIntensity;
+}
+
+export interface TrainingLog extends TrainingInput {
+  id: string;
+  createdAt: string;
+}
+
+export interface TrackingWrite<T> {
+  record: T;
+  replayed: boolean;
+}
+
+export interface DailySummary {
+  localDate: string;
+  metric: DailyMetric | null;
+  nutrition: NutritionLog | null;
+  trainingSessions: TrainingLog[];
+  trainingMinutes: number;
+}
+
+export type WeeklyReviewRecommendation =
+  | 'INSUFFICIENT_DATA'
+  | 'HOLD'
+  | 'INCREASE_ENERGY'
+  | 'DECREASE_ENERGY';
+
+export interface WeeklyReview {
+  id: string;
+  planVersionId: string;
+  windowStart: string;
+  windowEnd: string;
+  versionNo: number;
+  policyVersion: string;
+  weightObservationDays: number;
+  nutritionLoggedDays: number;
+  stepsObservedDays: number;
+  sleepObservedDays: number;
+  trainingDays: number;
+  averageWeightKg: number | null;
+  weightTrendPercent: number | null;
+  nutritionAdherencePercent: number | null;
+  averageSteps: number | null;
+  averageSleepMinutes: number | null;
+  totalTrainingMinutes: number;
+  recommendation: WeeklyReviewRecommendation;
+  proposedEnergyDeltaKcalPerDay: -100 | 0 | 100;
+  reason: string;
+  createdAt: string;
+  limitation: string;
+}
+
+export interface WeeklyReviewWrite {
+  review: WeeklyReview;
+  replayed: boolean;
+}
+
+export type CoachScene =
+  | 'GENERAL_CHAT'
+  | 'PLAN_GENERATION'
+  | 'DAILY_CHECKIN'
+  | 'WEEKLY_REVIEW'
+  | 'HBTI_INTERPRETATION'
+  | 'SAFETY_SCREENING';
+
+export interface CoachStreamInput {
+  conversationId: string;
+  scene: CoachScene;
+  message: string;
+}
+
+export type CoachStreamEvent =
+  | { type: 'metadata'; conversationId: string; scene: CoachScene }
+  | { type: 'token'; sequence: number; text: string }
+  | { type: 'completion'; conversationId: string }
+  | { type: 'error'; code: string; message: string; retryable: boolean };

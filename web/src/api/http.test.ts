@@ -78,4 +78,66 @@ describe('API client', () => {
     expect(fetchMock.mock.calls[1][1]).toEqual(expect.objectContaining({ method: 'PUT', credentials: 'include' }));
     expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get('X-XSRF-TOKEN')).toBe('csrf-value');
   });
+
+  it('writes an explicit-unit daily metric with CSRF and idempotency', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ headerName: 'X-XSRF-TOKEN', token: 'csrf-value' }))
+      .mockResolvedValueOnce(jsonResponse({ record: { id: 'metric-1' }, replayed: false }, { status: 201 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await api.recordDailyMetric({
+      localDate: '2026-08-16', weightKg: 70.2, steps: 8_000,
+      activityMinutes: 45, sleepMinutes: 450, sleepQuality: 4,
+    }, 'metric-attempt-1');
+
+    const [path, request] = fetchMock.mock.calls[1];
+    expect(path).toBe('/api/v1/tracking/daily-metrics');
+    expect(new Headers(request?.headers).get('Idempotency-Key')).toBe('metric-attempt-1');
+    expect(JSON.parse(request?.body as string)).toMatchObject({ weightKg: 70.2, sleepMinutes: 450 });
+  });
+
+  it('generates a weekly review without accepting an owner or plan mutation', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ headerName: 'X-XSRF-TOKEN', token: 'csrf-value' }))
+      .mockResolvedValueOnce(jsonResponse({ review: { id: 'review-1' }, replayed: false }, { status: 201 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await api.generateWeeklyReview('2026-08-16');
+
+    const [path, request] = fetchMock.mock.calls[1];
+    expect(path).toBe('/api/v1/tracking/weekly-reviews');
+    expect(JSON.parse(request?.body as string)).toEqual({ windowEnd: '2026-08-16' });
+  });
+
+  it('parses named coach SSE events in order over an authenticated POST', async () => {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode('event:metadata\ndata:{"conversationId":"c1","scene":"DAILY_CHECKIN"}\n\n'));
+        controller.enqueue(encoder.encode('event:token\ndata:{"sequence":1,"text":"先记录"}\n\nevent:completion\ndata:{"conversationId":"c1"}\n\n'));
+        controller.close();
+      },
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ headerName: 'X-XSRF-TOKEN', token: 'csrf-value' }))
+      .mockResolvedValueOnce(new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const events: unknown[] = [];
+
+    await api.streamCoach({ conversationId: 'c1', scene: 'DAILY_CHECKIN', message: '今天怎么开始？' }, {
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(events).toEqual([
+      { type: 'metadata', conversationId: 'c1', scene: 'DAILY_CHECKIN' },
+      { type: 'token', sequence: 1, text: '先记录' },
+      { type: 'completion', conversationId: 'c1' },
+    ]);
+    const [, request] = fetchMock.mock.calls[1];
+    expect(request?.method).toBe('POST');
+    expect(request?.credentials).toBe('include');
+    expect(JSON.parse(request?.body as string)).toEqual({
+      conversationId: 'c1', scene: 'DAILY_CHECKIN', message: '今天怎么开始？',
+    });
+  });
 });

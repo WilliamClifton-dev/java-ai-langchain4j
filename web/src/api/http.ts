@@ -1,10 +1,23 @@
 import type {
+  CoachScene,
+  CoachStreamEvent,
+  CoachStreamInput,
+  DailyMetric,
+  DailyMetricInput,
+  DailySummary,
   HbtiDefinition,
   HbtiResult,
+  NutritionInput,
+  NutritionLog,
   Profile,
   ProfileInput,
   SafetyScreening,
   ScreeningInput,
+  TrackingWrite,
+  TrainingInput,
+  TrainingLog,
+  WeeklyReview,
+  WeeklyReviewWrite,
   WeightPlan,
 } from './domain';
 
@@ -105,6 +118,126 @@ async function mutate<T>(path: string, init: RequestInit = {}): Promise<T> {
   return request<T>(path, { ...init, method: init.method ?? 'POST', headers });
 }
 
+const COACH_SCENES = new Set<CoachScene>([
+  'GENERAL_CHAT', 'PLAN_GENERATION', 'DAILY_CHECKIN', 'WEEKLY_REVIEW',
+  'HBTI_INTERPRETATION', 'SAFETY_SCREENING',
+]);
+
+function objectValue(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new ApiError(502, 'INVALID_STREAM_EVENT', '教练返回了无法识别的数据');
+  }
+  return value as Record<string, unknown>;
+}
+
+function stringValue(value: unknown) {
+  if (typeof value !== 'string') throw new ApiError(502, 'INVALID_STREAM_EVENT', '教练返回了无法识别的数据');
+  return value;
+}
+
+function coachEvent(name: string, json: string): CoachStreamEvent {
+  let value: Record<string, unknown>;
+  try {
+    value = objectValue(JSON.parse(json));
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(502, 'INVALID_STREAM_EVENT', '教练返回了无法识别的数据');
+  }
+
+  if (name === 'metadata') {
+    const scene = stringValue(value.scene) as CoachScene;
+    if (!COACH_SCENES.has(scene)) throw new ApiError(502, 'INVALID_STREAM_EVENT', '教练场景无效');
+    return { type: 'metadata', conversationId: stringValue(value.conversationId), scene };
+  }
+  if (name === 'token') {
+    if (!Number.isInteger(value.sequence) || (value.sequence as number) < 1) {
+      throw new ApiError(502, 'INVALID_STREAM_EVENT', '教练消息顺序无效');
+    }
+    return { type: 'token', sequence: value.sequence as number, text: stringValue(value.text) };
+  }
+  if (name === 'completion') {
+    return { type: 'completion', conversationId: stringValue(value.conversationId) };
+  }
+  if (name === 'error') {
+    if (typeof value.retryable !== 'boolean') throw new ApiError(502, 'INVALID_STREAM_EVENT', '教练错误状态无效');
+    return {
+      type: 'error', code: stringValue(value.code), message: stringValue(value.message),
+      retryable: value.retryable,
+    };
+  }
+  throw new ApiError(502, 'INVALID_STREAM_EVENT', '教练返回了未知事件');
+}
+
+async function streamCoach(
+  input: CoachStreamInput,
+  handlers: { onEvent(event: CoachStreamEvent): void },
+  signal?: AbortSignal,
+) {
+  const csrf = await csrfContract();
+  const response = await fetch('/api/v1/coach/messages/stream', {
+    method: 'POST',
+    credentials: 'include',
+    signal,
+    headers: {
+      Accept: 'text/event-stream',
+      'Content-Type': 'application/json',
+      [csrf.headerName]: csrf.token,
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    const body = await parseBody(response) as ApiErrorEnvelope | undefined;
+    throw new ApiError(
+      response.status,
+      body?.error?.code ?? 'REQUEST_FAILED',
+      body?.error?.message ?? '暂时无法连接教练',
+      body?.error?.details ?? {},
+    );
+  }
+  if (!response.headers.get('Content-Type')?.includes('text/event-stream') || !response.body) {
+    throw new ApiError(502, 'INVALID_STREAM_RESPONSE', '教练流式响应不可用');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let hasMetadata = false;
+  let terminal = false;
+  let lastSequence = 0;
+
+  function dispatch(block: string) {
+    const lines = block.split('\n');
+    const name = lines.find((line) => line.startsWith('event:'))?.slice(6).trim();
+    const data = lines.filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trimStart()).join('\n');
+    if (!name || !data) return;
+    const event = coachEvent(name, data);
+    if (terminal || (event.type === 'metadata' && hasMetadata) || (event.type !== 'metadata' && !hasMetadata)) {
+      throw new ApiError(502, 'INVALID_STREAM_ORDER', '教练消息事件顺序无效');
+    }
+    if (event.type === 'metadata') hasMetadata = true;
+    if (event.type === 'token') {
+      if (event.sequence !== lastSequence + 1) throw new ApiError(502, 'INVALID_STREAM_ORDER', '教练消息片段顺序无效');
+      lastSequence = event.sequence;
+    }
+    if (event.type === 'completion' || event.type === 'error') terminal = true;
+    handlers.onEvent(event);
+  }
+
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done }).replaceAll('\r\n', '\n');
+    let boundary = buffer.indexOf('\n\n');
+    while (boundary >= 0) {
+      dispatch(buffer.slice(0, boundary));
+      buffer = buffer.slice(boundary + 2);
+      boundary = buffer.indexOf('\n\n');
+    }
+    if (done) break;
+  }
+  if (!terminal) throw new ApiError(502, 'STREAM_INTERRUPTED', '教练连接在完成前中断');
+}
+
 export const api = {
   getSession: () => request<AuthSession>('/api/v1/auth/session'),
   register: (credentials: AuthCredentials) => mutate<AuthSession>('/api/v1/auth/register', {
@@ -144,6 +277,28 @@ export const api = {
     mutate<WeightPlan>(`/api/v1/plans/${encodeURIComponent(plan.planId)}/versions/${encodeURIComponent(plan.id)}/activation`, {
       headers: { 'Idempotency-Key': idempotencyKey },
     }),
+  getDailySummary: (localDate: string) => request<DailySummary>(
+    `/api/v1/tracking/days/${encodeURIComponent(localDate)}`,
+  ),
+  recordDailyMetric: (input: DailyMetricInput, idempotencyKey: string) =>
+    mutate<TrackingWrite<DailyMetric>>('/api/v1/tracking/daily-metrics', {
+      headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify(input),
+    }),
+  recordNutrition: (input: NutritionInput, idempotencyKey: string) =>
+    mutate<TrackingWrite<NutritionLog>>('/api/v1/tracking/nutrition', {
+      headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify(input),
+    }),
+  recordTraining: (input: TrainingInput, idempotencyKey: string) =>
+    mutate<TrackingWrite<TrainingLog>>('/api/v1/tracking/training', {
+      headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify(input),
+    }),
+  generateWeeklyReview: (windowEnd: string) => mutate<WeeklyReviewWrite>(
+    '/api/v1/tracking/weekly-reviews', { body: JSON.stringify({ windowEnd }) },
+  ),
+  getWeeklyReview: (reviewId: string) => request<WeeklyReview>(
+    `/api/v1/tracking/weekly-reviews/${encodeURIComponent(reviewId)}`,
+  ),
+  streamCoach,
 };
 
 export function isApiError(error: unknown, code?: string): error is ApiError {
