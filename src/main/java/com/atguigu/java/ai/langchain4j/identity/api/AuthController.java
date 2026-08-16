@@ -6,6 +6,7 @@ import com.atguigu.java.ai.langchain4j.identity.InvalidCredentialsException;
 import com.atguigu.java.ai.langchain4j.identity.LoginAttemptGuard;
 import com.atguigu.java.ai.langchain4j.identity.RegisterAccountCommand;
 import com.atguigu.java.ai.langchain4j.identity.RefreshTokenReuseException;
+import com.atguigu.java.ai.langchain4j.identity.RegisteredAccount;
 import com.atguigu.java.ai.langchain4j.identity.TooManyLoginAttemptsException;
 import com.atguigu.java.ai.langchain4j.common.audit.AuditEvent;
 import com.atguigu.java.ai.langchain4j.common.audit.AuditEventService;
@@ -67,6 +68,15 @@ public class AuthController {
         audit(AuditEventType.ACCOUNT_REGISTERED, session.account().id(), httpRequest,
                 true, Map.of("action", "register"));
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(session));
+    }
+
+    @GetMapping("/session")
+    public AuthSessionResponse session(@AuthenticationPrincipal Jwt jwt) {
+        RegisteredAccount account = authenticationService.currentAccount(jwt.getSubject());
+        return new AuthSessionResponse(
+                new AuthSessionResponse.User(account.id(), account.email()),
+                jwt.getExpiresAt()
+        );
     }
 
     @PostMapping("/login")

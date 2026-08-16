@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -88,6 +89,36 @@ class AuthenticationApiTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.answer").value("authenticated"));
+    }
+
+    @Test
+    void restoresTheCurrentSessionFromTheAccessCookie() throws Exception {
+        MvcResult registration = mockMvc.perform(post("/api/v1/auth/register")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "session-restore@example.com",
+                                  "password": "correct horse battery staple"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn();
+        Cookie accessCookie = registration.getResponse().getCookie("HBTI_ACCESS");
+        assertThat(accessCookie).isNotNull();
+
+        mockMvc.perform(get("/api/v1/auth/session").cookie(accessCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.email").value("session-restore@example.com"))
+                .andExpect(jsonPath("$.accessExpiresAt").isString())
+                .andExpect(jsonPath("$.accessToken").doesNotExist());
+    }
+
+    @Test
+    void rejectsAnonymousSessionReadsWithTheStableErrorEnvelope() throws Exception {
+        mockMvc.perform(get("/api/v1/auth/session"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
     }
 
     @Test

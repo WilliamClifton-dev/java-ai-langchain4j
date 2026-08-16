@@ -7,6 +7,7 @@ Base path: `/api/v1/auth`
 | Method | Path | Authentication | Result |
 |---|---|---|---|
 | `GET` | `/csrf` | public | returns CSRF header name and token and initializes the CSRF cookie |
+| `GET` | `/session` | access cookie or bearer JWT | returns the current user summary and access expiry without exposing tokens |
 | `POST` | `/register` | public + CSRF | creates an account, returns user summary, and sets access/refresh cookies |
 | `POST` | `/login` | public + CSRF | verifies generic credentials, returns user summary, and sets new cookies |
 | `POST` | `/refresh` | refresh cookie + CSRF | rotates the refresh family member and replaces both cookies |

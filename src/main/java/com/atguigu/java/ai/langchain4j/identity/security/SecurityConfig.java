@@ -3,6 +3,7 @@ package com.atguigu.java.ai.langchain4j.identity.security;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -57,8 +58,15 @@ public class SecurityConfig {
                         .frameOptions(frame -> frame.deny())
                 )
                 .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf").permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/auth/register",
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/refresh",
+                                "/api/v1/auth/logout"
+                        ).permitAll()
                         .requestMatchers(
-                                "/api/v1/auth/**", "/actuator/health/liveness",
+                                "/actuator/health/liveness",
                                 "/actuator/health/readiness", "/error", "/doc.html",
                                 "/webjars/**", "/swagger-resources/**", "/v3/api-docs/**"
                         ).permitAll()

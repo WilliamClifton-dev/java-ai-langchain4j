@@ -80,6 +80,14 @@ public class AuthenticationService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public RegisteredAccount currentAccount(String userId) {
+        UserAccount account = userAccountMapper.findById(userId)
+                .filter(candidate -> candidate.status() == AccountStatus.ACTIVE)
+                .orElseThrow(InvalidCredentialsException::new);
+        return toRegisteredAccount(account);
+    }
+
     private AuthSession issueSession(RegisteredAccount account) {
         return new AuthSession(
                 account,
