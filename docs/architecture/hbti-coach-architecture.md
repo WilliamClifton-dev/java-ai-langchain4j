@@ -216,6 +216,25 @@ Task 13 registers exactly six model-visible tools: owned active-plan, daily-summ
 
 ## HBTI Governance
 
+- ADR-015 adopts the shared research-development agreement with the research
+  repository. HBTI remains an exploratory, multidimensional behavioral and
+  lifestyle profile for adults, not a biological, clinical, or metabolic type.
+  It may personalize emphasis, wording, and monitoring only after universal
+  safety, user state, deterministic calculations, and evidence-backed rules;
+  it never decides medical treatment, calorie prescriptions, or high-risk
+  exercise advice by itself.
+- HBTI V1 keeps its four dimensions and 16-type presentation for compatibility.
+  Continuous dimension scores are the primary internal representation and the
+  type code is secondary communication. Any construct, item, scoring, or
+  recommendation-mapping change requires a new version proposal with evidence
+  level, limitations, compatibility, migration behavior, and acceptance tests.
+- Research proposals do not change Java behavior automatically. The research
+  repository owns construct and evidence proposals; this repository owns
+  immutable published definitions, deterministic execution, safety boundaries,
+  evidence metadata, and regression/integration evaluation. The V1 golden file
+  is software parity evidence only, never a clinical or scientific gold
+  standard.
+
 - Assessment definitions and scoring keys are versioned and immutable after publication.
 - Results expose continuous dimension scores before any four-letter shorthand.
 - UI, API and generated content display the non-diagnostic limitation near interpretation.

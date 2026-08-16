@@ -244,6 +244,7 @@ public void createIdempotentResource(...) {
 - **Current architecture**: `docs/architecture/hbti-coach-architecture.md`
 - **Historical evolution**: `docs/architecture/xiaozhi-to-hbti-coach-architecture.md`
 - **ADRs**: `docs/decisions/ADR-*.md`
+- **Shared HBTI agreement**: `docs/decisions/ADR-015-adopt-shared-hbti-research-development-agreement.md` (required before changing HBTI constructs, scoring, recommendation rules, or scientific claims)
 - **Execution plan**: `tasks/plan.md` and `tasks/todo.md`
 
 ## Key Constraints
