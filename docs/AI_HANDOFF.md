@@ -24,8 +24,9 @@ Before changing files, read these sources in order:
 3. .codex/plan-runs/hbti-platform/state.md
 4. docs/specs/hbti-coach-product-spec.md
 5. docs/architecture/hbti-coach-architecture.md
-6. accepted ADRs under docs/decisions/
-7. tasks/todo.md and the current Git diff/log
+6. docs/decisions/ADR-015-adopt-shared-hbti-research-development-agreement.md
+7. accepted ADRs under docs/decisions/
+8. tasks/todo.md and the current Git diff/log
 
 Treat Git, tests and repository files as authoritative. Conversation summaries are
 only hints. Preserve user changes and continue from the current branch. For every
@@ -33,17 +34,21 @@ task: update the durable ledger, implement incrementally, run the stated verific
 write evidence, review the diff, and commit an atomic checkpoint. Never mark a task
 complete from code inspection alone.
 
-Product safety constraints are mandatory: HBTI is exploratory and non-diagnostic;
-do not make medical claims. Deterministic Java rules own health calculations, safety
-gates and durable facts. Prompts and model output never grant authorization. MySQL is
-the durable source of truth; Redis stores only bounded ephemeral/reconstructable data.
-Default tests must not require an external database, Redis or model provider. Never
-log or commit credentials, tokens, health facts, assessment answers, prompts or model
-content.
+Product safety constraints are mandatory: follow ADR-015 and its canonical shared
+agreement. HBTI is exploratory and non-diagnostic; continuous dimensions are primary
+and four-letter codes are secondary. HBTI may personalize wording, emphasis and
+monitoring, but it never owns calories, treatment, safety or high-risk exercise
+decisions. Keep V1 immutable and introduce construct, item, scoring or recommendation
+changes only through a reviewed new version. Golden fixtures prove software parity,
+not scientific validity. Deterministic Java rules own calculations, safety gates and
+durable facts. Prompts and model output never grant authorization. MySQL is the durable
+source of truth; Redis stores only bounded ephemeral/reconstructable data. Default
+tests must not require an external database, Redis or model provider. Never log or
+commit credentials, tokens, health facts, assessment answers, prompts or model content.
 
-Current priority: implement Tasks 19-21 as the real Web product, followed by
-Tasks 22-24 release evidence and final handoff. Keep architecture, ADRs, API docs,
-learning docs and evidence synchronized with behavior.
+Current priority: implement Task 21 as the remaining Web product flow, followed by
+Tasks 22-24 release evidence and final handoff. Tasks 19 and 20 are complete. Keep
+architecture, ADRs, API docs, learning docs and evidence synchronized with behavior.
 ```
 
 ## 2. Product Definition
@@ -83,7 +88,7 @@ update it even though it is not committed by default.
 ## 4. Current Architecture
 
 ```text
-React Web (not implemented yet)
+React Web (account, profile, assessment and plan flows implemented)
         |
 Spring Boot modular monolith
   identity -> profile -> assessment -> planning -> tracking
@@ -185,12 +190,16 @@ Supply-chain audit and framework upgrade completed:
 
 ### Tasks 19-21: Web Product
 
-Status: **pending**. There is currently no `web/` directory.
+Status: **in progress**. Tasks 19 and 20 are complete; Task 21 remains.
 
-- Task 19: React application shell, register/login/logout, CSRF, cookie auth, protected
-  routes and accessible error/loading states.
-- Task 20: profile, safety screening, HBTI assessment/result and plan lifecycle flow.
-- Task 21: daily tracking, trends, weekly review and streaming coach on mobile/desktop.
+- Task 19 delivered the React application shell, register/login/logout, CSRF, cookie
+  auth, protected routes and accessible error/loading states.
+- Task 20 delivered profile, safety screening, HBTI assessment/result and guarded plan
+  lifecycle flows. Its result UI presents continuous dimensions before the auxiliary
+  four-letter code as required by ADR-015.
+- Task 21 must deliver daily tracking, trends, weekly review and streaming coach on
+  mobile and desktop without allowing HBTI or model output to bypass deterministic
+  plan and safety boundaries.
 - Required evidence includes unit tests, production build, real-browser critical flows,
   accessibility checks, console/network inspection and responsive screenshots.
 
@@ -215,8 +224,9 @@ branch diff and run every final gate.
 ## 8. Recommended Execution Order
 
 1. Reconcile Git status and the durable ledger before editing.
-2. Implement Tasks 19-21 as thin, tested vertical Web slices against the committed API
-   contract. Do not invent duplicate frontend business rules.
+2. Implement Task 21 as a thin, tested vertical Web slice against the committed API
+   contracts. Do not invent duplicate frontend business rules or move deterministic
+   planning and safety decisions into HBTI wording or model output.
 3. Extend CI and Compose for the Web application and record a health-asserting smoke run.
 4. Produce Task 23 evaluation, load, restore and rollback evidence using documented L1
    assumptions and SLOs.
@@ -234,7 +244,7 @@ git diff --check
 ./scripts/security/osv-audit.ps1
 ```
 
-Once `web/` exists, these become mandatory:
+The Web application exists, so these commands are mandatory:
 
 ```powershell
 npm --prefix web ci

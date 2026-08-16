@@ -5,6 +5,7 @@
 - Product spec: `docs/specs/hbti-coach-product-spec.md`
 - Target architecture: `docs/architecture/hbti-coach-architecture.md`
 - Database decision: `docs/decisions/ADR-002-use-mysql-as-primary-store.md`
+- HBTI research-development boundary: `docs/decisions/ADR-015-adopt-shared-hbti-research-development-agreement.md`
 - Target release level: L1 public beta
 
 ## Execution Rules
@@ -14,6 +15,13 @@
 - Update architecture, ADRs, API docs and learning notes with the code that changes them.
 - Complete dependency-ready tasks continuously unless an external decision genuinely blocks progress.
 - Do not claim L2/enterprise readiness without the evidence listed in the architecture.
+- Keep HBTI V1 immutable. Continuous dimensions are primary and the four-letter
+  code is secondary; golden fixtures prove software parity, not scientific validity.
+- HBTI may personalize wording, emphasis and monitoring, but deterministic rules
+  retain calories, safety, treatment boundaries and high-risk exercise decisions.
+- Route construct, item, scoring or recommendation-mapping changes through a
+  versioned research proposal with evidence, limitations, compatibility,
+  migration behavior and acceptance tests before changing Java behavior.
 
 ## Dependency Graph
 
@@ -157,7 +165,7 @@ The frontend and Compose commands enter the mandatory set when their tasks creat
 
 | Risk | Mitigation |
 |---|---|
-| HBTI semantics drift from prototype | import versioned definitions and golden fixtures before public API |
+| HBTI semantics drift from prototype | keep V1 immutable and introduce reviewed changes only as a new version; use golden fixtures only for software parity |
 | Health advice exceeds product boundary | deterministic safety gate, explicit wording, AI evaluation and escalation |
 | Scope becomes an unreviewable rewrite | complete and verify each vertical task before the next |
 | External AI makes tests flaky | mock contracts by default; opt-in provider smoke tests only |
