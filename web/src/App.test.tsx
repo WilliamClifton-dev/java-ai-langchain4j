@@ -126,4 +126,37 @@ describe('account experience', () => {
       '/api/v1/auth/session', '/api/v1/profile', '/api/v1/profile/screenings/current',
     ]);
   });
+
+  it('walks through the HBTI questionnaire and submits all answers once', async () => {
+    window.history.replaceState({}, '', '/assessment');
+    const items = Array.from({ length: 16 }, (_, index) => ({
+      itemKey: `q${index + 1}`, ordinal: index + 1, titleZh: `问题 ${index + 1}`,
+      hintZh: '请选择最符合你近况的选项', titleEn: `Question ${index + 1}`, hintEn: 'Choose one',
+    }));
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(session))
+      .mockResolvedValueOnce(jsonResponse({
+        version: '1.0.0', displayName: 'HBTI', answerMin: 1, answerMax: 5,
+        dimensions: [], items, limitation: 'HBTI is an exploratory behavioral tendency assessment, not a diagnosis.',
+      }))
+      .mockResolvedValueOnce(jsonResponse({ error: { code: 'ASSESSMENT_RESULT_NOT_FOUND', message: 'No result', details: {} } }, 404))
+      .mockResolvedValueOnce(jsonResponse({ headerName: 'X-XSRF-TOKEN', token: 'csrf-value' }))
+      .mockResolvedValueOnce(jsonResponse({
+        result: { id: 'r1', definitionVersion: '1.0.0', scoringRuleVersion: '1.0.0', dimensions: [], typeCode: 'FHRN', limitation: 'HBTI is an exploratory behavioral tendency assessment, not a diagnosis.', completedAt: '2026-08-16T12:00:00Z' }, replayed: false,
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: 'HBTI 行为倾向测评' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '开始测评' }));
+    for (let index = 0; index < 16; index += 1) {
+      await user.click(screen.getByRole('radio', { name: '3' }));
+      await user.click(screen.getByRole('button', { name: index === 15 ? '提交测评' : '下一题' }));
+    }
+    expect(await screen.findByText('FHRN')).toBeInTheDocument();
+    expect(fetchMock.mock.calls[4][0]).toBe('/api/v1/assessments/hbti/submissions');
+    expect(new Headers(fetchMock.mock.calls[4][1]?.headers).get('Idempotency-Key')).toBeTruthy();
+    expect(JSON.parse(fetchMock.mock.calls[4][1]?.body as string).answers).toHaveLength(16);
+  });
 });

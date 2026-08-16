@@ -8,6 +8,7 @@ import { AppShell } from './components/AppShell';
 import { AuthPage } from './pages/AuthPage';
 import { HomePage } from './pages/HomePage';
 import { ProfilePage } from './pages/ProfilePage';
+import { AssessmentPage } from './pages/AssessmentPage';
 
 export function App() {
   const [queryClient] = useState(() => new QueryClient({
@@ -25,6 +26,7 @@ export function App() {
             <Route element={<AppShell />}>
               <Route index element={<HomePage />} />
               <Route path="profile" element={<ProfilePage />} />
+              <Route path="assessment" element={<AssessmentPage />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

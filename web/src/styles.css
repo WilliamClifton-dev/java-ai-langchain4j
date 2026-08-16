@@ -650,6 +650,217 @@ a {
   border-left-color: var(--ochre);
 }
 
+.assessment-start {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.assessment-start-copy {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.assessment-start-copy > svg {
+  flex: 0 0 auto;
+  color: var(--accent);
+  margin-top: 3px;
+}
+
+.assessment-start-copy h2 {
+  margin: 0 0 7px;
+  font-size: 1.25rem;
+}
+
+.assessment-start-copy p {
+  max-width: 48rem;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.assessment-run {
+  width: min(100%, 760px);
+  margin: 0 auto;
+}
+
+.progress-meta,
+.dimension-labels,
+.dimension-scores {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.progress-track {
+  height: 6px;
+  margin: 10px 0 54px;
+  overflow: hidden;
+  background: #dfe5df;
+  border-radius: 3px;
+}
+
+.progress-track span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 180ms ease;
+}
+
+.question-block {
+  min-height: 330px;
+  padding: 38px 0;
+  border-block: 1px solid var(--line);
+}
+
+.question-block h2 {
+  max-width: 42rem;
+  margin: 10px 0 42px;
+  font-family: Georgia, "Noto Serif SC", serif;
+  font-size: clamp(1.55rem, 3vw, 2.2rem);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.scale-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.scale-fieldset legend {
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.scale-options {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.scale-option {
+  min-height: 56px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.scale-option:hover {
+  border-color: var(--accent);
+  background: #f3faf6;
+}
+
+.scale-option.selected {
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.scale-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.scale-legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.assessment-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.button-secondary {
+  color: var(--ink);
+  background: transparent;
+  border-color: #aeb9b0;
+}
+
+.button-secondary:hover:not(:disabled) {
+  background: #edf1ed;
+  border-color: #7f8e83;
+}
+
+.result-list {
+  display: grid;
+  gap: 20px;
+}
+
+.result-row {
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
+}
+
+.result-row-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 15px;
+}
+
+.result-row-header span {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.dimension-bar {
+  height: 12px;
+  margin-top: 9px;
+  overflow: hidden;
+  background: #e7ece8;
+  border-radius: 6px;
+}
+
+.dimension-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.dimension-scores {
+  margin-top: 6px;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.75rem;
+}
+
+.result-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 28px 0 20px;
+  padding: 14px 16px;
+  color: #694d24;
+  background: #fff7e8;
+  border-left: 3px solid var(--ochre);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.result-note > svg {
+  flex: 0 0 auto;
+}
+
 .workspace-heading {
   max-width: 680px;
   margin-bottom: 42px;
@@ -862,5 +1073,24 @@ a {
 
   .section-actions .button {
     width: 100%;
+  }
+
+  .assessment-start {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .assessment-start .button,
+  .assessment-actions .button {
+    flex: 1;
+  }
+
+  .question-block {
+    min-height: 360px;
+    padding-block: 30px;
+  }
+
+  .question-block h2 {
+    margin-bottom: 32px;
   }
 }
