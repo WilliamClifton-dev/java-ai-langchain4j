@@ -4,6 +4,7 @@ import com.atguigu.java.ai.langchain4j.assessment.AssessmentResultNotFoundExcept
 import com.atguigu.java.ai.langchain4j.assessment.HbtiAnswer;
 import com.atguigu.java.ai.langchain4j.assessment.HbtiAssessmentService;
 import com.atguigu.java.ai.langchain4j.assessment.HbtiAssessmentSubmission;
+import com.atguigu.java.ai.langchain4j.assessment.HbtiDefinitionCatalog;
 import com.atguigu.java.ai.langchain4j.assessment.SubmitHbtiAssessmentCommand;
 import com.atguigu.java.ai.langchain4j.infrastructure.redis.RequestLeaseCoordinator;
 import jakarta.validation.Valid;
@@ -13,6 +14,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,14 +28,24 @@ import java.time.Duration;
 public class HbtiAssessmentController {
 
     private final HbtiAssessmentService service;
+    private final HbtiDefinitionCatalog definitions;
     private final RequestLeaseCoordinator leaseCoordinator;
 
     public HbtiAssessmentController(
             HbtiAssessmentService service,
+            HbtiDefinitionCatalog definitions,
             RequestLeaseCoordinator leaseCoordinator
     ) {
         this.service = service;
+        this.definitions = definitions;
         this.leaseCoordinator = leaseCoordinator;
+    }
+
+    @GetMapping("/definitions/{version}")
+    public HbtiDefinitionResponse definition(@PathVariable String version) {
+        return definitions.findPublished("hbti", version)
+                .map(HbtiDefinitionResponse::from)
+                .orElseThrow(com.atguigu.java.ai.langchain4j.assessment.AssessmentDefinitionNotFoundException::new);
     }
 
     @PostMapping("/submissions")

@@ -2,6 +2,14 @@
 
 Base path: `/api/v1/assessments/hbti`
 
+## Read A Published Questionnaire
+
+`GET /definitions/{version}` returns the ordered, bilingual questionnaire,
+dimension labels and answer range for an authenticated browser. It omits source
+repository metadata and each item's scoring pole so the client renders the
+assessment without owning or exposing scoring rules. Unknown or retired
+versions return `404 ASSESSMENT_DEFINITION_NOT_FOUND`.
+
 All endpoints require an access token. The server derives the owner from the JWT subject. Client `userId`, score, type, or interpretation fields are ignored and never trusted.
 
 ## Submit

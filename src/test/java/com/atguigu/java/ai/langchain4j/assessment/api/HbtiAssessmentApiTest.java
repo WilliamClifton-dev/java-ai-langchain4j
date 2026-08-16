@@ -46,6 +46,24 @@ class HbtiAssessmentApiTest {
     private ChatLanguageModel chatModel;
 
     @Test
+    void readsPublishedQuestionnaireWithoutExposingScoringKeys() throws Exception {
+        String userId = user("assessment-definition-api@example.com");
+
+        mockMvc.perform(get("/api/v1/assessments/hbti/definitions/{version}", "1.0.0")
+                        .with(jwt().jwt(token -> token.subject(userId))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value("1.0.0"))
+                .andExpect(jsonPath("$.answerMin").value(1))
+                .andExpect(jsonPath("$.answerMax").value(5))
+                .andExpect(jsonPath("$.dimensions.length()").value(4))
+                .andExpect(jsonPath("$.items.length()").value(16))
+                .andExpect(jsonPath("$.items[0].itemKey").value("q1"))
+                .andExpect(jsonPath("$.items[0].titleZh").isNotEmpty())
+                .andExpect(jsonPath("$.items[0].targetPole").doesNotExist())
+                .andExpect(jsonPath("$.sourceCommit").doesNotExist());
+    }
+
+    @Test
     void submitsReplaysAndReadsOwnedNonDiagnosticResults() throws Exception {
         String ownerId = user("assessment-api@example.com");
         String otherId = user("assessment-api-other@example.com");
