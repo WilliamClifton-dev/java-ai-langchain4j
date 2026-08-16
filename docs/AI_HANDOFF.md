@@ -46,8 +46,8 @@ source of truth; Redis stores only bounded ephemeral/reconstructable data. Defau
 tests must not require an external database, Redis or model provider. Never log or
 commit credentials, tokens, health facts, assessment answers, prompts or model content.
 
-Current priority: implement Task 21 as the remaining Web product flow, followed by
-Tasks 22-24 release evidence and final handoff. Tasks 19 and 20 are complete. Keep
+Current priority: complete Tasks 22-24 release evidence and final handoff. Tasks 19
+through 21 are complete. Keep
 architecture, ADRs, API docs, learning docs and evidence synchronized with behavior.
 ```
 
@@ -190,18 +190,21 @@ Supply-chain audit and framework upgrade completed:
 
 ### Tasks 19-21: Web Product
 
-Status: **in progress**. Tasks 19 and 20 are complete; Task 21 remains.
+Status: **complete**. Tasks 19 through 21 provide the real browser product loop.
 
 - Task 19 delivered the React application shell, register/login/logout, CSRF, cookie
   auth, protected routes and accessible error/loading states.
 - Task 20 delivered profile, safety screening, HBTI assessment/result and guarded plan
   lifecycle flows. Its result UI presents continuous dimensions before the auxiliary
   four-letter code as required by ADR-015.
-- Task 21 must deliver daily tracking, trends, weekly review and streaming coach on
-  mobile and desktop without allowing HBTI or model output to bypass deterministic
-  plan and safety boundaries.
-- Required evidence includes unit tests, production build, real-browser critical flows,
-  accessibility checks, console/network inspection and responsive screenshots.
+- Task 21 delivered unit-explicit daily tracking and summaries, sparse-data-aware
+  deterministic weekly reviews, and a validated POST-SSE coach with cancellation and
+  typed retryable errors. HBTI and model output cannot bypass deterministic plan or
+  safety boundaries.
+- Final evidence: 22 frontend tests, production build, zero high-severity npm audit
+  findings, Chrome checks at 320/768/1024/1440 px with no document overflow, clean
+  console, empty browser storage and Lighthouse accessibility/best-practices 100.
+  Browser flows used a local contract mock; Compose end-to-end evidence remains Task 22.
 
 ### Task 22: Delivery
 
@@ -224,13 +227,10 @@ branch diff and run every final gate.
 ## 8. Recommended Execution Order
 
 1. Reconcile Git status and the durable ledger before editing.
-2. Implement Task 21 as a thin, tested vertical Web slice against the committed API
-   contracts. Do not invent duplicate frontend business rules or move deterministic
-   planning and safety decisions into HBTI wording or model output.
-3. Extend CI and Compose for the Web application and record a health-asserting smoke run.
-4. Produce Task 23 evaluation, load, restore and rollback evidence using documented L1
+2. Extend CI and Compose for the Web application and record a health-asserting smoke run.
+3. Produce Task 23 evaluation, load, restore and rollback evidence using documented L1
    assumptions and SLOs.
-5. Complete Task 24 documentation/review and only then run the global completion audit.
+4. Complete Task 24 documentation/review and only then run the global completion audit.
 
 ## 9. Verification Commands
 

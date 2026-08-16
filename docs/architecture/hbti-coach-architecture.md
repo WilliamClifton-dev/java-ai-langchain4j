@@ -36,6 +36,7 @@ The target architecture is delivered incrementally. A capability is considered i
 | Account data lifecycle | owner-scoped export, confirmed deletion, audit events, conversation cascade and active-account JWT validation | implemented |
 | API contract and browser boundary | OpenAPI 1.0.0 path baseline, explicit CORS origins and security-header tests | implemented |
 | Web account, assessment and planning | Cookie/CSRF account shell, profile and safety gate, versioned HBTI questionnaire, continuous result view and guarded plan lifecycle | implemented |
+| Web execution loop | unit-explicit daily tracking, deterministic weekly-review presentation, bounded POST-SSE coach client, cancellation and responsive browser evidence | implemented |
 
 Operational SLOs below remain release targets until Task 23 records load, recovery, and rollback evidence. Passing unit tests does not by itself make the service production or enterprise grade.
 
@@ -90,10 +91,10 @@ common infrastructure supports modules without owning domain rules
 
 The React and TypeScript application under `web/` is a browser client of the
 versioned `/api/v1` contract. It does not reproduce domain calculations or
-authorization rules. Tasks 19 and 20 implement the account boundary, responsive
+authorization rules. Tasks 19 through 21 implement the account boundary, responsive
 application shell, profile and safety flow, versioned HBTI questionnaire and
-continuous result view, and the guarded draft-to-active plan lifecycle.
-Tracking, weekly review and coach screens remain Task 21.
+continuous result view, guarded draft-to-active plan lifecycle, daily execution
+tracking, deterministic weekly review and the streaming coach.
 
 - Every API request uses `credentials: include`; browser code never reads the
   `HBTI_ACCESS` or `HBTI_REFRESH` HttpOnly cookies.
@@ -117,6 +118,19 @@ Tracking, weekly review and coach screens remain Task 21.
   while new draft creation is hidden until all current prerequisites pass.
 - HBTI result presentation follows ADR-015: continuous dimensions are primary
   and the four-letter type code is explicitly secondary communication.
+- Tracking writes expose kg, kcal, grams, steps and whole-minute units, keep one
+  idempotency key for a retry of the same user action, and refresh the server-owned
+  daily summary after success. The browser does not calculate aggregate facts.
+- Weekly review generation sends only `windowEnd`. Sparse observations, adherence,
+  trends and bounded energy proposals are rendered from the immutable server result;
+  the UI states that proposals never modify an active plan automatically.
+- Coach requests send only conversation ID, scene and message. The POST-SSE client
+  validates runtime event shapes and `metadata -> token* -> completion|error`
+  ordering, rejects interrupted or malformed streams, preserves typed retryability
+  and supports user cancellation. Model text is rendered as escaped React text.
+- HBTI coach wording follows ADR-015: it may personalize emphasis and monitoring,
+  but calculation, plan mutation, treatment, safety and high-risk exercise decisions
+  remain outside model and client authority.
 - Vite proxies `/api` and `/actuator` only during local development. Production
   origin and static-asset delivery are Task 22 deployment concerns.
 

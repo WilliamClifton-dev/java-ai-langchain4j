@@ -20,7 +20,7 @@
 - [x] Task 18: OpenAPI and security hardening
 - [x] Task 19: Web foundation and authentication flow
 - [x] Task 20: Web assessment, profile and plan flow
-- [ ] Task 21: Web tracking, review and coach flow
+- [x] Task 21: Web tracking, review and coach flow
 - [ ] Task 22: CI, Docker and environment delivery (partial: backend CI and container scaffolding only)
 - [ ] Task 23: Evaluation, load, backup and rollback gates
 - [ ] Task 24: Final architecture and learning handoff (partial: initial learning guide only)
