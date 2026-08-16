@@ -807,6 +807,37 @@ a {
   gap: 20px;
 }
 
+.result-heading-meta {
+  display: grid;
+  gap: 18px;
+}
+
+.result-heading-meta > p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.type-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.type-summary span {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.type-summary strong {
+  color: var(--accent-strong);
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 1rem;
+}
+
 .result-row {
   padding: 22px 0;
   border-top: 1px solid var(--line);
@@ -859,6 +890,203 @@ a {
 
 .result-note > svg {
   flex: 0 0 auto;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.plan-prerequisites {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-block: 1px solid var(--line);
+}
+
+.prerequisite {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 18px;
+  color: #80591f;
+}
+
+.prerequisite + .prerequisite {
+  border-left: 1px solid var(--line);
+}
+
+.prerequisite.ready {
+  color: var(--accent);
+}
+
+.prerequisite > span {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.prerequisite > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.prerequisite strong {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.prerequisite small {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.plan-blocked {
+  align-items: flex-start;
+  margin-top: 28px;
+}
+
+.plan-blocked > span {
+  display: grid;
+  gap: 3px;
+}
+
+.goal-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.goal-option {
+  min-width: 0;
+  min-height: 112px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.goal-option:hover,
+.goal-option.selected {
+  background: #f3faf6;
+  border-color: var(--accent);
+}
+
+.goal-option input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+
+.goal-option > span {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.goal-option strong {
+  font-size: 0.94rem;
+}
+
+.goal-option small {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.plan-summary-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.plan-summary-heading h2 {
+  margin: 7px 0 0;
+  font-size: 1.55rem;
+}
+
+.plan-status {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  color: #634514;
+  background: #fff3dc;
+  border: 1px solid #e6cca2;
+  border-radius: 4px;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.plan-status-active {
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border-color: #b4d9c5;
+}
+
+.plan-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-block: 1px solid var(--line);
+}
+
+.plan-metric {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  padding: 20px;
+}
+
+.plan-metric + .plan-metric {
+  border-left: 1px solid var(--line);
+}
+
+.plan-metric span,
+.plan-metric small {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.plan-metric strong {
+  overflow-wrap: anywhere;
+  font-family: Georgia, serif;
+  font-size: 1.45rem;
+  font-weight: 500;
+}
+
+.plan-guidance {
+  margin: 20px 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+
+.plan-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.plan-builder-actions {
+  gap: 10px;
 }
 
 .workspace-heading {
@@ -1022,6 +1250,21 @@ a {
   .form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .plan-prerequisites,
+  .plan-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .prerequisite + .prerequisite,
+  .plan-metric + .plan-metric {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .goal-options {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1092,5 +1335,19 @@ a {
 
   .question-block h2 {
     margin-bottom: 32px;
+  }
+
+  .plan-summary-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .plan-actions .button {
+    width: 100%;
+  }
+
+  .plan-builder-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
   }
 }

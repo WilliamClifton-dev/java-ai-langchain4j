@@ -1,4 +1,4 @@
-import { ClipboardList, Home, LogOut, ShieldCheck, Sparkles } from 'lucide-react';
+import { ClipboardList, Home, LogOut, ShieldCheck, Sparkles, Target } from 'lucide-react';
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
@@ -48,6 +48,7 @@ export function AppShell() {
         <NavLink to="/" end><Home size={17} />概览</NavLink>
         <NavLink to="/profile"><ClipboardList size={17} />档案</NavLink>
         <NavLink to="/assessment"><Sparkles size={17} />测评</NavLink>
+        <NavLink to="/plan"><Target size={17} />计划</NavLink>
       </nav>
       <div className="context-bar">
         <ShieldCheck size={16} aria-hidden="true" />

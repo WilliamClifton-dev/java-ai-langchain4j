@@ -154,9 +154,120 @@ describe('account experience', () => {
       await user.click(screen.getByRole('radio', { name: '3' }));
       await user.click(screen.getByRole('button', { name: index === 15 ? '提交测评' : '下一题' }));
     }
-    expect(await screen.findByText('FHRN')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'HBTI 维度画像' })).toBeInTheDocument();
+    expect(screen.getByText('FHRN')).toBeInTheDocument();
     expect(fetchMock.mock.calls[4][0]).toBe('/api/v1/assessments/hbti/submissions');
     expect(new Headers(fetchMock.mock.calls[4][1]?.headers).get('Idempotency-Key')).toBeTruthy();
     expect(JSON.parse(fetchMock.mock.calls[4][1]?.body as string).answers).toHaveLength(16);
+  });
+
+  it('creates, validates, confirms and activates a server-calculated plan', async () => {
+    window.history.replaceState({}, '', '/plan');
+    const plan = (status: string) => ({
+      id: 'version-1', planId: 'plan-1', versionNo: 1, status, goal: 'LOSS',
+      formulaVersion: 'MIFFLIN_ST_JEOR_METRIC_V1', targetPolicyVersion: 'BOUNDED_TARGET_POLICY_V1',
+      bmi: 25.7, bmrKcalPerDay: 1450, tdeeKcalPerDay: 2100,
+      energyMinKcalPerDay: 1750, energyMaxKcalPerDay: 1900,
+      weeklyWeightChangeMinPercent: -0.75, weeklyWeightChangeMaxPercent: -0.25,
+      createdAt: '2026-08-16T12:00:00Z', validatedAt: status === 'DRAFT' ? null : '2026-08-16T12:01:00Z',
+      confirmedAt: ['CONFIRMED', 'ACTIVE'].includes(status) ? '2026-08-16T12:02:00Z' : null,
+      activatedAt: status === 'ACTIVE' ? '2026-08-16T12:03:00Z' : null, replacedAt: null,
+      guidance: 'Targets are planning estimates, not medical prescriptions or guaranteed outcomes.',
+    });
+    const calls: string[] = [];
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      calls.push(`${init?.method ?? 'GET'} ${path}`);
+      if (path === '/api/v1/auth/session') return Promise.resolve(jsonResponse(session));
+      if (path === '/api/v1/profile') return Promise.resolve(jsonResponse({ userId: 'account-123', dateOfBirth: '1990-01-01', calculationSex: 'FEMALE', heightCm: 165, currentWeightKg: 70, targetWeightKg: 60, activityLevel: 'MODERATE', timeZone: 'Asia/Hong_Kong' }));
+      if (path === '/api/v1/profile/screenings/current') return Promise.resolve(jsonResponse({ id: 'screen-1', version: 1, status: 'ELIGIBLE', automaticPlanningAllowed: true, reasonCodes: [], guidance: 'Automatic planning is available.', createdAt: '2026-08-16T12:00:00Z' }));
+      if (path === '/api/v1/assessments/hbti/results/current') return Promise.resolve(jsonResponse({ id: 'result-1', definitionVersion: '1.0.0', scoringRuleVersion: '1.0.0', dimensions: [], typeCode: 'FHRN', limitation: 'HBTI is exploratory.', completedAt: '2026-08-16T12:00:00Z' }));
+      if (path === '/api/v1/plans/active') return Promise.resolve(jsonResponse({ error: { code: 'PLAN_VERSION_NOT_FOUND', message: 'No active plan', details: {} } }, 404));
+      if (path === '/api/v1/auth/csrf') return Promise.resolve(jsonResponse({ headerName: 'X-XSRF-TOKEN', token: 'csrf-value' }));
+      if (path === '/api/v1/plans/drafts') return Promise.resolve(jsonResponse(plan('DRAFT'), 201));
+      if (path.endsWith('/validation')) return Promise.resolve(jsonResponse(plan('VALIDATED')));
+      if (path.endsWith('/confirmation')) return Promise.resolve(jsonResponse(plan('CONFIRMED')));
+      if (path.endsWith('/activation')) return Promise.resolve(jsonResponse(plan('ACTIVE')));
+      return Promise.reject(new Error(`unexpected request ${path}`));
+    }));
+
+    const user = userEvent.setup();
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: '体重管理计划' })).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: '温和减重' }));
+    await user.click(screen.getByRole('button', { name: '生成计划草稿' }));
+    expect(await screen.findByText('草稿')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '校验计划' }));
+    await user.click(await screen.findByRole('button', { name: '确认计划' }));
+    await user.click(await screen.findByRole('button', { name: '启用计划' }));
+    expect(await screen.findByText('当前计划已启用')).toBeInTheDocument();
+    expect(calls).toContain('POST /api/v1/plans/drafts');
+    expect(calls).toContain('POST /api/v1/plans/plan-1/versions/version-1/validation');
+    expect(calls).toContain('POST /api/v1/plans/plan-1/versions/version-1/confirmation');
+    expect(calls).toContain('POST /api/v1/plans/plan-1/versions/version-1/activation');
+    const fetchCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
+    const draftRequest = fetchCalls.find((call) => call[0] === '/api/v1/plans/drafts');
+    const activationRequest = fetchCalls.find((call) => String(call[0]).endsWith('/activation'));
+    expect(new Headers(draftRequest?.[1]?.headers).get('Idempotency-Key')).toBeTruthy();
+    expect(new Headers(activationRequest?.[1]?.headers).get('Idempotency-Key')).toBeTruthy();
+    expect(JSON.parse(draftRequest?.[1]?.body as string)).toEqual({ goal: 'LOSS' });
+  });
+
+  it('blocks planning when the persisted safety gate requires professional review', async () => {
+    window.history.replaceState({}, '', '/plan');
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path === '/api/v1/auth/session') return Promise.resolve(jsonResponse(session));
+      if (path === '/api/v1/profile') return Promise.resolve(jsonResponse({ userId: 'account-123', dateOfBirth: '1990-01-01', calculationSex: 'FEMALE', heightCm: 165, currentWeightKg: 70, targetWeightKg: 60, activityLevel: 'MODERATE', timeZone: 'Asia/Hong_Kong' }));
+      if (path === '/api/v1/profile/screenings/current') return Promise.resolve(jsonResponse({ id: 'screen-1', version: 1, status: 'PROFESSIONAL_REVIEW', automaticPlanningAllowed: false, reasonCodes: ['MEDICAL_GUIDANCE_REQUIRED'], guidance: 'Please consult a qualified professional before planning.', createdAt: '2026-08-16T12:00:00Z' }));
+      if (path === '/api/v1/assessments/hbti/results/current') return Promise.resolve(jsonResponse({ id: 'result-1', definitionVersion: '1.0.0', scoringRuleVersion: '1.0.0', dimensions: [], typeCode: 'FHRN', limitation: 'HBTI is exploratory.', completedAt: '2026-08-16T12:00:00Z' }));
+      if (path === '/api/v1/plans/active') return Promise.resolve(jsonResponse({ error: { code: 'PLAN_VERSION_NOT_FOUND', message: 'No active plan', details: {} } }, 404));
+      return Promise.reject(new Error(`unexpected request ${path}`));
+    }));
+
+    render(<App />);
+    expect(await screen.findByText('自动计划已暂停')).toBeInTheDocument();
+    expect(screen.getByText('请先完成安全筛查并确认可以进入自动计划。')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '生成计划草稿' })).not.toBeInTheDocument();
+  });
+
+  it('keeps an existing active plan visible when new planning becomes blocked', async () => {
+    window.history.replaceState({}, '', '/plan');
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path === '/api/v1/auth/session') return Promise.resolve(jsonResponse(session));
+      if (path === '/api/v1/profile') return Promise.resolve(jsonResponse({ userId: 'account-123', dateOfBirth: '1990-01-01', calculationSex: 'FEMALE', heightCm: 165, currentWeightKg: 70, targetWeightKg: 60, activityLevel: 'MODERATE', timeZone: 'Asia/Hong_Kong' }));
+      if (path === '/api/v1/profile/screenings/current') return Promise.resolve(jsonResponse({ id: 'screen-2', version: 2, status: 'PROFESSIONAL_REVIEW', automaticPlanningAllowed: false, reasonCodes: ['MEDICAL_GUIDANCE_REQUIRED'], guidance: 'Professional review required.', createdAt: '2026-08-16T13:00:00Z' }));
+      if (path === '/api/v1/assessments/hbti/results/current') return Promise.resolve(jsonResponse({ id: 'result-1', definitionVersion: '1.0.0', scoringRuleVersion: '1.0.0', dimensions: [], typeCode: 'FHRN', limitation: 'HBTI is exploratory.', completedAt: '2026-08-16T12:00:00Z' }));
+      if (path === '/api/v1/plans/active') return Promise.resolve(jsonResponse({ id: 'version-1', planId: 'plan-1', versionNo: 1, status: 'ACTIVE', goal: 'LOSS', formulaVersion: 'MIFFLIN_ST_JEOR_METRIC_V1', targetPolicyVersion: 'BOUNDED_TARGET_POLICY_V1', bmi: 25.7, bmrKcalPerDay: 1450, tdeeKcalPerDay: 2100, energyMinKcalPerDay: 1750, energyMaxKcalPerDay: 1900, weeklyWeightChangeMinPercent: -0.75, weeklyWeightChangeMaxPercent: -0.25, createdAt: '2026-08-16T12:00:00Z', validatedAt: '2026-08-16T12:01:00Z', confirmedAt: '2026-08-16T12:02:00Z', activatedAt: '2026-08-16T12:03:00Z', replacedAt: null, guidance: 'Planning estimate only.' }));
+      return Promise.reject(new Error(`unexpected request ${path}`));
+    }));
+
+    render(<App />);
+    expect(await screen.findByText('当前计划已启用')).toBeInTheDocument();
+    expect(screen.getByText('已启用')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '生成计划草稿' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '制定新计划' })).not.toBeInTheDocument();
+  });
+
+  it('lets an eligible user start a replacement from an active plan', async () => {
+    window.history.replaceState({}, '', '/plan');
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path === '/api/v1/auth/session') return Promise.resolve(jsonResponse(session));
+      if (path === '/api/v1/profile') return Promise.resolve(jsonResponse({ userId: 'account-123' }));
+      if (path === '/api/v1/profile/screenings/current') return Promise.resolve(jsonResponse({ status: 'ELIGIBLE', automaticPlanningAllowed: true, guidance: 'Eligible.' }));
+      if (path === '/api/v1/assessments/hbti/results/current') return Promise.resolve(jsonResponse({ typeCode: 'FHRN' }));
+      if (path === '/api/v1/plans/active') return Promise.resolve(jsonResponse({ id: 'version-1', planId: 'plan-1', versionNo: 1, status: 'ACTIVE', goal: 'LOSS', bmi: 25.7, bmrKcalPerDay: 1450, tdeeKcalPerDay: 2100, energyMinKcalPerDay: 1750, energyMaxKcalPerDay: 1900, guidance: 'Planning estimate only.' }));
+      return Promise.reject(new Error(`unexpected request ${path}`));
+    }));
+
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: '制定新计划' }));
+    expect(screen.getByRole('radio', { name: '温和减重' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '生成计划草稿' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '返回当前计划' }));
+    expect(await screen.findByText('当前计划已启用')).toBeInTheDocument();
   });
 });
