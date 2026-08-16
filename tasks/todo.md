@@ -17,7 +17,7 @@
 - [x] Task 15: Streaming and model resilience
 - [x] Task 16: Redis rate, idempotency and cache controls
 - [x] Task 17: Observability and audit trail
-- [x] Task 18: OpenAPI and security hardening
+- [ ] Task 18: OpenAPI and security hardening (implementation and tests pass; dependency advisory reachability/fix triage remains)
 - [ ] Task 19: Web foundation and authentication flow
 - [ ] Task 20: Web assessment, profile and plan flow
 - [ ] Task 21: Web tracking, review and coach flow

@@ -1,6 +1,6 @@
 # HBTI Coach AI Model Handoff
 
-> Last verified: 2026-08-15
+> Last verified: 2026-08-16
 > Repository: `D:\Projects\java-ai-langchain4j`
 > Branch: `codex/hbti-platform`
 > Handoff baseline commit: `ed02122`
@@ -170,7 +170,8 @@ secure in production.
 
 ### Task 18: OpenAPI And Security Hardening
 
-Status: **complete**.
+Status: **in progress**. The implementation and backend verification pass, but
+the dependency advisory gate is intentionally still open.
 
 Supply-chain audit and Spring Boot upgrade completed:
 
@@ -178,18 +179,20 @@ Supply-chain audit and Spring Boot upgrade completed:
 - ✅ CVE-2024-22233 (Spring Framework DoS, CVSS 7.5) fixed
 - ✅ CVE-2024-38808 (Spring Security SpEL CPU exhaustion) patched
 - ✅ Tomcat, Jackson, Netty, Logback updated via BOM
-- ✅ Full test suite passes (131/132 tests; 1 pre-existing failure unrelated to upgrade)
+- ✅ Full test suite passes (132 tests, 0 failures, 0 errors; 1 opt-in external model test skipped)
 - ✅ LangChain4j 1.0.0-beta3 and Knife4j 4.3.0 compatibility verified
 - ✅ Audit report: `docs/security/DEPENDENCY_AUDIT_2026-08-15.md`
 
-Remaining advisory triage: 95 OSV matches analyzed by component family; 9 critical 
-families resolved via Spring Boot upgrade; 86 individual advisories require reachability 
-assessment (deferred to L2 production hardening phase per architecture doc).
+Remaining advisory triage: 95 OSV matches analyzed by component family; 9 critical
+families resolved via Spring Boot upgrade; 86 individual advisories still require
+reachability, fixed-version, mitigation and review-date evidence. They cannot be
+silently deferred while claiming the Task 18 acceptance gate is complete.
 
 Spring Boot 3.4.x upgrade blocked by Knife4j incompatibility (ControllerAdviceBean API 
 change). Current 3.3.5 baseline acceptable for L1 beta with documented risks.
 
-Evidence: commit ff1e0a0, test log `tmp/upgrade-test-3.3.5.log`, audit report.
+Evidence: commits `ff1e0a0` and `8bb5534`, test log
+`tmp/upgrade-test-3.3.5.log`, audit report and the current full-suite result above.
 
 ### Tasks 19-21: Web Product
 
