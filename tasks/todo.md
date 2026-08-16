@@ -19,7 +19,7 @@
 - [x] Task 17: Observability and audit trail
 - [x] Task 18: OpenAPI and security hardening
 - [x] Task 19: Web foundation and authentication flow
-- [ ] Task 20: Web assessment, profile and plan flow
+- [x] Task 20: Web assessment, profile and plan flow
 - [ ] Task 21: Web tracking, review and coach flow
 - [ ] Task 22: CI, Docker and environment delivery (partial: backend CI and container scaffolding only)
 - [ ] Task 23: Evaluation, load, backup and rollback gates

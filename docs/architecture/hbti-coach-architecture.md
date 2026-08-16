@@ -35,6 +35,7 @@ The target architecture is delivered incrementally. A capability is considered i
 | Observability and audit | validated request correlation, JSON logs, implemented-workflow audit records, bounded Micrometer metrics and distinct dependency probes | implemented |
 | Account data lifecycle | owner-scoped export, confirmed deletion, audit events, conversation cascade and active-account JWT validation | implemented |
 | API contract and browser boundary | OpenAPI 1.0.0 path baseline, explicit CORS origins and security-header tests | implemented |
+| Web account, assessment and planning | Cookie/CSRF account shell, profile and safety gate, versioned HBTI questionnaire, continuous result view and guarded plan lifecycle | implemented |
 
 Operational SLOs below remain release targets until Task 23 records load, recovery, and rollback evidence. Passing unit tests does not by itself make the service production or enterprise grade.
 
@@ -89,9 +90,10 @@ common infrastructure supports modules without owning domain rules
 
 The React and TypeScript application under `web/` is a browser client of the
 versioned `/api/v1` contract. It does not reproduce domain calculations or
-authorization rules. Task 19 implements the account boundary and responsive
-application shell; assessment/planning and tracking/coach screens remain Tasks
-20 and 21.
+authorization rules. Tasks 19 and 20 implement the account boundary, responsive
+application shell, profile and safety flow, versioned HBTI questionnaire and
+continuous result view, and the guarded draft-to-active plan lifecycle.
+Tracking, weekly review and coach screens remain Task 21.
 
 - Every API request uses `credentials: include`; browser code never reads the
   `HBTI_ACCESS` or `HBTI_REFRESH` HttpOnly cookies.
@@ -106,6 +108,15 @@ application shell; assessment/planning and tracking/coach screens remain Tasks
   the user to login.
 - Server-confirmed logout is required before the browser clears its session
   summary; a failed revocation remains visible and retryable.
+- Profile, screening, current HBTI result and active plan are restored from the
+  server after reload. Assessment and plan mutations use bounded idempotency
+  keys; the client submits answers or a goal only and never supplies scores,
+  calculations, target ranges, lifecycle state or ownership.
+- The plan screen separates visibility from planning eligibility: an existing
+  active version remains readable when a later safety gate blocks replacement,
+  while new draft creation is hidden until all current prerequisites pass.
+- HBTI result presentation follows ADR-015: continuous dimensions are primary
+  and the four-letter type code is explicitly secondary communication.
 - Vite proxies `/api` and `/actuator` only during local development. Production
   origin and static-asset delivery are Task 22 deployment concerns.
 
