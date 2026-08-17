@@ -131,8 +131,9 @@ tracking, deterministic weekly review and the streaming coach.
 - HBTI coach wording follows ADR-015: it may personalize emphasis and monitoring,
   but calculation, plan mutation, treatment, safety and high-risk exercise decisions
   remain outside model and client authority.
-- Vite proxies `/api` and `/actuator` only during local development. Production
-  origin and static-asset delivery are Task 22 deployment concerns.
+- Vite proxies `/api` and `/actuator` during local development. The Web image serves
+  the production SPA through Nginx and proxies the same paths to the backend, so
+  Cookie, CSRF and SSE traffic remains on one browser origin.
 
 ## Dependency Rules
 
@@ -355,13 +356,20 @@ Promotion to L2 requires 30 days of measured compliance, load-test evidence, on-
 
 ## Deployment
 
-The current Compose environment contains the backend, MySQL and Redis. The web
-application now has a reproducible npm lock file, tests and a production build,
-but its container/static hosting and the telemetry backend remain Task 22
-delivery work. The backend health check uses readiness. Production uses managed
-equivalents where available. Health endpoints separate liveness from readiness.
-Schema migration is a controlled release step. Secrets enter through the
-deployment platform and never image layers or source files.
+The Compose environment builds independent backend and Web images, starts MySQL and
+ephemeral Redis on an internal network, and exposes Nginx as the browser entry point.
+Both application images run explicit process health checks; backend readiness includes
+MySQL and Redis. The asserting smoke script requires all four services to become
+healthy and verifies non-root application users, direct readiness, readiness through
+the Web proxy, and the SPA shell. The default `offline` profile keeps deterministic
+product capabilities runnable without a model credential while model calls fail
+locally and do not contact a provider. CI repeats backend/frontend gates and this
+Compose smoke.
+
+This remains an L1 verification topology. Production uses managed equivalents where
+appropriate and must add TLS, managed secrets, backups, alert delivery and immutable
+image publication. Schema migration is a controlled release step. Secrets enter
+through the deployment platform and never image layers or source files.
 
 Deployments are rolling or blue/green once more than one instance exists. Every release records artifact version, migration range, prompt/model policy, evaluation report and rollback command.
 

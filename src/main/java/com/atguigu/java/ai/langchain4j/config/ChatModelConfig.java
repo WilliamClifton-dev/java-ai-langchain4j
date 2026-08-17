@@ -5,6 +5,8 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -15,6 +17,17 @@ import java.time.Duration;
 
 @Configuration
 public class ChatModelConfig {
+
+    @Bean(name = "chatModel")
+    @Profile("offline")
+    public ChatLanguageModel offlineChatModel() {
+        return new ChatLanguageModel() {
+            @Override
+            public ChatResponse doChat(ChatRequest request) {
+                throw new IllegalStateException("External model is disabled");
+            }
+        };
+    }
 
     @Bean(name = "chatModel")
     @Profile("local")

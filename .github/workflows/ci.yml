@@ -6,34 +6,14 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
+  backend:
+    name: Backend quality gates
     runs-on: ubuntu-latest
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: test-password
-          MYSQL_DATABASE: hbti_coach
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h localhost"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd="redis-cli ping"
-          --health-interval=10s
-          --health-timeout=3s
-          --health-retries=5
-
     steps:
       - uses: actions/checkout@v4
 
@@ -41,51 +21,91 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '17'
-          distribution: 'temurin'
+          distribution: temurin
           cache: maven
 
-      - name: Run tests
-        run: mvn --batch-mode --update-snapshots test
-        env:
-          MYSQL_URL: jdbc:mysql://localhost:3306/hbti_coach
-          MYSQL_USERNAME: root
-          MYSQL_PASSWORD: test-password
-          REDIS_URL: redis://localhost:6379
+      - name: Run backend tests
+        run: mvn --batch-mode --no-transfer-progress clean test
 
-      - name: Build package
-        run: mvn --batch-mode --update-snapshots -DskipTests package
+      - name: Build backend package
+        run: mvn --batch-mode --no-transfer-progress -DskipTests package
 
-      - name: Upload artifact
+      - name: Audit backend runtime dependencies
+        shell: pwsh
+        run: ./scripts/security/osv-audit.ps1 -FailOn HIGH
+
+      - name: Upload backend package
         uses: actions/upload-artifact@v4
         with:
           name: hbti-coach-jar
           path: target/*.jar
+          if-no-files-found: error
           retention-days: 7
 
-  build-image:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+      - name: Upload backend dependency audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dependency-audit
+          path: target/security/osv-report.json
+          if-no-files-found: warn
+          retention-days: 14
 
+  frontend:
+    name: Frontend quality gates
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download artifact
-        uses: actions/download-artifact@v4
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
         with:
-          name: hbti-coach-jar
-          path: target/
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
 
-      - name: Build Docker image
-        run: docker build -t hbti-coach:${{ github.sha }} .
+      - name: Install frozen frontend dependencies
+        run: npm ci
 
-      - name: Test Docker image
-        run: |
-          docker run -d --name test-container \
-            -e MYSQL_URL=jdbc:mysql://host.docker.internal:3306/hbti_coach \
-            -e REDIS_URL=redis://host.docker.internal:6379 \
-            -e AUTH_SIGNING_KEY=test-key-min-32-bytes-for-ci \
-            hbti-coach:${{ github.sha }}
-          sleep 30
-          docker logs test-container
-          docker stop test-container
+      - name: Run frontend tests
+        run: npm test
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Audit frontend dependencies
+        run: npm audit --audit-level=high
+
+      - name: Upload frontend bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: hbti-coach-web
+          path: web/dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  compose-smoke:
+    name: Compose runtime smoke
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+
+      - name: Build and assert the Compose runtime
+        shell: pwsh
+        run: ./scripts/smoke/compose-smoke.ps1 -TimeoutSeconds 300
+
+      - name: Upload Compose smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compose-smoke-evidence
+          path: target/compose-smoke/
+          if-no-files-found: warn
+          retention-days: 14

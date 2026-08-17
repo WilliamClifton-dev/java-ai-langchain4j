@@ -1,6 +1,6 @@
 # HBTI Coach AI Model Handoff
 
-> Last verified: 2026-08-16
+> Last verified: 2026-08-17
 > Repository: `D:\Projects\java-ai-langchain4j`
 > Branch: `codex/hbti-platform`
 > Handoff baseline: current branch HEAD; verify with `git rev-parse HEAD`
@@ -46,8 +46,8 @@ source of truth; Redis stores only bounded ephemeral/reconstructable data. Defau
 tests must not require an external database, Redis or model provider. Never log or
 commit credentials, tokens, health facts, assessment answers, prompts or model content.
 
-Current priority: complete Tasks 22-24 release evidence and final handoff. Tasks 19
-through 21 are complete. Keep
+Current priority: complete Tasks 23-24 release evidence and final handoff. Tasks 19
+through 22 are complete. Keep
 architecture, ADRs, API docs, learning docs and evidence synchronized with behavior.
 ```
 
@@ -88,7 +88,9 @@ update it even though it is not committed by default.
 ## 4. Current Architecture
 
 ```text
-React Web (account, profile, assessment and plan flows implemented)
+React Web (complete public-beta product loop)
+        |
+Nginx static delivery + same-origin API/actuator proxy
         |
 Spring Boot modular monolith
   identity -> profile -> assessment -> planning -> tracking
@@ -126,7 +128,7 @@ Key persistence rules:
 
 ## 5. Implemented And Verified
 
-Tasks 1-17 are recorded complete. The backend currently implements:
+Tasks 1-22 are recorded complete. The platform currently implements:
 
 - MySQL/MyBatis/Flyway persistence and H2-compatible default tests;
 - BCrypt credentials, signed access JWTs, rotating opaque refresh tokens and CSRF;
@@ -208,9 +210,19 @@ Status: **complete**. Tasks 19 through 21 provide the real browser product loop.
 
 ### Task 22: Delivery
 
-Status: **in progress**. Backend CI, Dockerfile, Compose and deployment notes exist.
-Still required: frontend frozen install/build gates, asserting container health smoke
-test and end-to-end Compose evidence.
+Status: **complete**. CI enforces clean backend tests/package/OSV audit and frozen
+frontend install/tests/build/high-severity audit. Independent multi-stage backend and
+Web images run as non-root users. Nginx serves the SPA and proxies `/api` plus
+`/actuator` on one origin. The default offline Compose topology starts MySQL, ephemeral
+Redis, backend and Web without a model key.
+
+Final evidence: 137 backend tests passed with 1 explicit external-model skip; 22/22
+frontend tests passed; both production builds passed; npm and OSV gates reported 0
+findings; all four Compose services were healthy; direct/proxied readiness returned
+`UP`; the SPA shell and Web health endpoint passed; runtime users were backend uid 100
+and Web uid 101. A real isolated Chrome load reached the anonymous login page with a
+clean console, complete accessibility tree, no horizontal overflow, LCP 122 ms and CLS
+0.00. Evidence is written under `target/compose-smoke/` by the smoke script.
 
 ### Task 23: Release Evidence
 
@@ -227,10 +239,9 @@ branch diff and run every final gate.
 ## 8. Recommended Execution Order
 
 1. Reconcile Git status and the durable ledger before editing.
-2. Extend CI and Compose for the Web application and record a health-asserting smoke run.
-3. Produce Task 23 evaluation, load, restore and rollback evidence using documented L1
+2. Produce Task 23 evaluation, load, restore and rollback evidence using documented L1
    assumptions and SLOs.
-4. Complete Task 24 documentation/review and only then run the global completion audit.
+3. Complete Task 24 documentation/review and only then run the global completion audit.
 
 ## 9. Verification Commands
 
@@ -242,6 +253,7 @@ mvn -q -DskipTests package
 docker compose config --quiet
 git diff --check
 ./scripts/security/osv-audit.ps1
+./scripts/smoke/compose-smoke.ps1
 ```
 
 The Web application exists, so these commands are mandatory:
@@ -250,6 +262,7 @@ The Web application exists, so these commands are mandatory:
 npm --prefix web ci
 npm --prefix web test
 npm --prefix web run build
+npm --prefix web audit --audit-level=high
 ```
 
 External model smoke tests are opt-in only:
@@ -273,14 +286,15 @@ Use `.env.example` as the variable catalog. Important settings include:
 - `MINIMAX_API_KEY`, or local Ollama profile variables
 - coach first-token/total timeout and concurrency limits
 
-Typical infrastructure start:
+Typical verified start:
 
 ```powershell
-docker compose up --build
+./scripts/smoke/compose-smoke.ps1 -KeepRunning
 ```
 
-The backend readiness endpoint is `/actuator/health/readiness`. A successful Compose
-config expansion is not an end-to-end runtime smoke test.
+The browser entry point is `http://localhost:5173/`; direct backend readiness is
+`http://localhost:8080/actuator/health/readiness`. A successful Compose config
+expansion is not an end-to-end runtime smoke test.
 
 ## 11. Non-Negotiable Safety And Quality Rules
 
@@ -303,9 +317,9 @@ config expansion is not an end-to-end runtime smoke test.
 
 At this handoff baseline:
 
-- Dependency audit intermediate files under `tmp/` are disposable evidence inputs and
-  must not be treated as a committed audit report.
-- The current dependency audit data was retrieved from OSV on 2026-08-16. Re-query the
+- Local untracked `tmp/` content is user-owned, outside the plan, and must not be
+  modified or committed.
+- The current dependency audit data was retrieved from OSV on 2026-08-17. Re-query the
   database after dependency changes because advisory status and fix ranges can change.
 
 ## 13. Completion Standard

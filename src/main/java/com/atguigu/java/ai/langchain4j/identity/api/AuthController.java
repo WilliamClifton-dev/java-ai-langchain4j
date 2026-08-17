@@ -108,7 +108,7 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public AuthSessionResponse refresh(
-            @CookieValue(AuthCookieWriter.REFRESH_COOKIE) String refreshToken,
+            @CookieValue(value = AuthCookieWriter.REFRESH_COOKIE, required = false) String refreshToken,
             HttpServletRequest httpRequest,
             HttpServletResponse response
     ) {

@@ -70,10 +70,10 @@ public class CoachStreamingConfig {
     }
 
     @Bean
-    @Profile("test")
+    @Profile({"test", "offline"})
     CoachStreamingModel unavailableTestStreamingModel() {
         return (request, listener) -> {
-            listener.onError(new IllegalStateException("External model disabled in tests"));
+            listener.onError(new IllegalStateException("External model is disabled"));
             return () -> { };
         };
     }

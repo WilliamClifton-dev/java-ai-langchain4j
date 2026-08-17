@@ -192,6 +192,14 @@ class AuthenticationApiTest {
     }
 
     @Test
+    void rejectsRefreshWithoutACookieUsingTheStableAuthenticationEnvelope() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .with(csrf()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REFRESH_TOKEN"));
+    }
+
+    @Test
     void rejectsInvalidCredentialsWithoutRevealingAccountExistence() throws Exception {
         mockMvc.perform(post("/api/v1/auth/login")
                         .with(csrf())

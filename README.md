@@ -22,8 +22,9 @@ HBTI 目前是探索性的行为倾向评估，不是医学诊断、疾病筛查
 - JSON 请求关联日志、关键流程审计、Micrometer 指标和独立健康探针
 - 不访问外部模型或数据库的默认测试套件
 - 可显式启用的真实模型 Smoke Test
+- 前后端独立镜像、同源 Nginx 代理与可断言的 Compose 健康冒烟
 
-Web 账户、Cookie 会话恢复和响应式应用壳已经实现；测评/计划、记录/教练页面、Web 容器交付、负载/AI 评测、备份恢复和回滚演练尚未完成。账户数据导出/删除、OpenAPI 路径契约和可重复执行的 OSV 依赖门禁已经实现。当前版本仍是 L1 公共测试版建设阶段，不是已完成生产验收或企业级认证的产品。
+Web 账户、Cookie 会话恢复、测评/计划、记录/复盘/教练页面和 Web 容器交付已经实现。负载/AI 评测、备份恢复和回滚演练仍待 Task 23 完成。账户数据导出/删除、OpenAPI 路径契约和可重复执行的 OSV 依赖门禁已经实现。当前版本仍是 L1 公共测试版建设阶段，不是已完成生产验收或企业级认证的产品。
 
 ## 技术栈
 
@@ -35,7 +36,15 @@ Web 账户、Cookie 会话恢复和响应式应用壳已经实现；测评/计�
 
 ## 配置
 
-默认启用 `minimax` Profile：
+无需模型密钥启动完整确定性功能与 Web 界面：
+
+```powershell
+./scripts/smoke/compose-smoke.ps1 -KeepRunning
+```
+
+浏览器入口是 `http://localhost:5173/`。默认 `offline` Profile 会让教练调用明确失败，但不会影响账户、测评、计划、记录和复盘。详细配置和清理命令见 [部署指南](docs/DEPLOYMENT.md)。
+
+直接在主机运行时，应用默认启用 `minimax` Profile：
 
 ```powershell
 $env:MINIMAX_API_KEY = "your-api-key"
