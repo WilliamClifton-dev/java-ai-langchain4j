@@ -1,6 +1,6 @@
 # HBTI Coach AI Model Handoff
 
-> Last verified: 2026-08-17
+> Last verified: 2026-08-18
 > Repository: `D:\Projects\java-ai-langchain4j`
 > Branch: `codex/hbti-platform`
 > Handoff baseline: current branch HEAD; verify with `git rev-parse HEAD`
@@ -46,9 +46,9 @@ source of truth; Redis stores only bounded ephemeral/reconstructable data. Defau
 tests must not require an external database, Redis or model provider. Never log or
 commit credentials, tokens, health facts, assessment answers, prompts or model content.
 
-Current priority: complete Tasks 23-24 release evidence and final handoff. Tasks 19
-through 22 are complete. Keep
-architecture, ADRs, API docs, learning docs and evidence synchronized with behavior.
+Current priority: complete Task 24 final reconciliation and handoff. Tasks 19 through
+23 are complete. Keep architecture, ADRs, API docs, learning docs and evidence
+synchronized with behavior.
 ```
 
 ## 2. Product Definition
@@ -67,8 +67,9 @@ screening tool or validated biological metabolic type. AI text is guidance, not 
 durable business fact; a write is successful only when the corresponding application
 service transaction commits.
 
-Target maturity is **L1 public beta**, not enterprise/L2. SLOs in the architecture
-remain targets until Task 23 supplies measured load, recovery and rollback evidence.
+Target maturity is **L1 public beta**, not enterprise/L2. Task 23 supplies reproducible
+pre-release load, recovery and rollback evidence. Availability and first-token SLOs
+remain production targets until measured after launch.
 
 ## 3. Source Of Truth
 
@@ -226,22 +227,25 @@ clean console, complete accessibility tree, no horizontal overflow, LCP 122 ms a
 
 ### Task 23: Release Evidence
 
-Status: **pending**. Required artifacts include versioned AI evaluation, L1 load report,
-backup restoration, rollback exercise, incident runbooks, demo data, cost evidence and
-release checklist. This task turns architecture targets into measured evidence.
+Status: **complete**. Versioned AI/RAG evaluation, public-API demo data, retention,
+operator runbooks, load, fresh-volume restore, rollback and machine-readable release
+gates are implemented. The full three-phase load observed 20 concurrent sessions,
+20 RPS for 60 seconds and 100 RPS for 10 seconds with zero errors or dropped
+iterations; p95 was 9.64 ms interactive, 5.47 ms sustained and 4.20 ms burst. Restore
+compared 21 durable tables on a fresh pinned MySQL image in 26.398 seconds with no
+count differences or retained dump. Invalid candidate configuration was rejected
+before cutover and known-good readiness recovered.
 
 ### Task 24: Final Handoff
 
-Status: **in progress**. Reconcile every architecture claim and link it to real code,
+Status: **pending**. Reconcile every architecture claim and link it to real code,
 complete module learning notes and interview questions, check links, review the full
 branch diff and run every final gate.
 
 ## 8. Recommended Execution Order
 
 1. Reconcile Git status and the durable ledger before editing.
-2. Produce Task 23 evaluation, load, restore and rollback evidence using documented L1
-   assumptions and SLOs.
-3. Complete Task 24 documentation/review and only then run the global completion audit.
+2. Complete Task 24 documentation/review and only then run the global completion audit.
 
 ## 9. Verification Commands
 
@@ -254,6 +258,11 @@ docker compose config --quiet
 git diff --check
 ./scripts/security/osv-audit.ps1
 ./scripts/smoke/compose-smoke.ps1
+./scripts/evaluation/run-ai-safety-evaluation.ps1 -DeploymentMode Offline
+./scripts/load/run-l1-load.ps1
+./scripts/recovery/test-mysql-restore.ps1
+./scripts/release/test-rollback.ps1
+./scripts/release/verify-release.ps1 -DeploymentMode Offline -Purpose Evidence
 ```
 
 The Web application exists, so these commands are mandatory:
@@ -284,7 +293,8 @@ Use `.env.example` as the variable catalog. Important settings include:
 - `AUTH_SIGNING_KEY`, `AUTH_SECURE_COOKIES`
 - `CORS_ALLOWED_ORIGINS`, `CORS_MAX_AGE`
 - `MINIMAX_API_KEY`, or local Ollama profile variables
-- coach first-token/total timeout and concurrency limits
+- coach first-token/total timeout, concurrency and model token limits
+- retention cleanup interval, refresh-token grace and audit-event retention
 
 Typical verified start:
 
@@ -292,9 +302,11 @@ Typical verified start:
 ./scripts/smoke/compose-smoke.ps1 -KeepRunning
 ```
 
-The browser entry point is `http://localhost:5173/`; direct backend readiness is
-`http://localhost:8080/actuator/health/readiness`. A successful Compose config
-expansion is not an end-to-end runtime smoke test.
+With the smoke script's isolated defaults, the browser entry point is
+`http://localhost:5272/`; direct backend readiness is
+`http://localhost:8179/actuator/health/readiness`. Ordinary `docker compose up` keeps
+the documented `5173/8080` defaults. A successful Compose config expansion is not an
+end-to-end runtime smoke test.
 
 ## 11. Non-Negotiable Safety And Quality Rules
 

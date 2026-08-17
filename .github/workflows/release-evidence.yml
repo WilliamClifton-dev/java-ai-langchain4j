@@ -1,0 +1,62 @@
+name: L1 Release Evidence
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: l1-release-evidence-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  offline-evidence:
+    name: Offline L1 evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: maven
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frozen Web dependencies
+        run: npm --prefix web ci
+
+      - name: Evaluate AI and RAG contracts
+        shell: pwsh
+        run: ./scripts/evaluation/run-ai-safety-evaluation.ps1 -DeploymentMode Offline
+
+      - name: Record L1 sustained and burst capacity
+        shell: pwsh
+        run: ./scripts/load/run-l1-load.ps1
+
+      - name: Rehearse fresh-volume MySQL restore
+        shell: pwsh
+        run: ./scripts/recovery/test-mysql-restore.ps1
+
+      - name: Rehearse invalid candidate rollback
+        shell: pwsh
+        run: ./scripts/release/test-rollback.ps1
+
+      - name: Verify complete release evidence
+        shell: pwsh
+        run: ./scripts/release/verify-release.ps1 -DeploymentMode Offline -Purpose Evidence
+
+      - name: Upload L1 release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: l1-release-evidence-${{ github.sha }}
+          path: target/release-evidence/
+          if-no-files-found: error
+          retention-days: 180

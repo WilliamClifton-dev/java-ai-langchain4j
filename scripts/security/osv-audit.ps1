@@ -18,6 +18,18 @@ $severityRank = @{
     CRITICAL = 4
 }
 
+function Get-OptionalProperty {
+    param($InputObject, [string]$Name)
+    if ($null -eq $InputObject) {
+        return $null
+    }
+    $property = $InputObject.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $null
+    }
+    return $property.Value
+}
+
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
 
 Push-Location $repositoryRoot
@@ -52,38 +64,61 @@ $queries = @($dependencies | ForEach-Object {
 $requestBody = @{ queries = $queries } | ConvertTo-Json -Depth 6 -Compress
 $batch = Invoke-RestMethod -Uri 'https://api.osv.dev/v1/querybatch' -Method Post `
     -ContentType 'application/json' -Body $requestBody
+$results = @(Get-OptionalProperty $batch 'results')
+if ($results.Count -ne $queries.Count) {
+    throw "OSV returned $($results.Count) result(s) for $($queries.Count) queries."
+}
 
-$matches = for ($index = 0; $index -lt $queries.Count; $index++) {
-    foreach ($vulnerability in @($batch.results[$index].vulns | Where-Object { $_.id })) {
+$matches = @(for ($index = 0; $index -lt $queries.Count; $index++) {
+    $vulnerabilities = @(Get-OptionalProperty $results[$index] 'vulns')
+    foreach ($vulnerability in $vulnerabilities) {
+        $id = [string](Get-OptionalProperty $vulnerability 'id')
+        if ([string]::IsNullOrWhiteSpace($id)) {
+            continue
+        }
         [pscustomobject]@{
             package = $queries[$index].package.name
             version = $queries[$index].version
-            id = $vulnerability.id
+            id = $id
         }
     }
-}
+})
 
 $detailsById = @{}
-foreach ($id in @($matches.id | Sort-Object -Unique)) {
+foreach ($id in @($matches | ForEach-Object { $_.id } | Sort-Object -Unique)) {
     $detailsById[$id] = Invoke-RestMethod -Uri "https://api.osv.dev/v1/vulns/$id" -Method Get
 }
 
 $findings = @($matches | ForEach-Object {
     $details = $detailsById[$_.id]
-    $severity = if ($details.database_specific.severity) {
-        $details.database_specific.severity.ToUpperInvariant()
+    $databaseSpecific = Get-OptionalProperty $details 'database_specific'
+    $rawSeverity = [string](Get-OptionalProperty $databaseSpecific 'severity')
+    $severity = if (-not [string]::IsNullOrWhiteSpace($rawSeverity)) {
+        $rawSeverity.ToUpperInvariant()
     }
     else {
         'UNKNOWN'
     }
+    $fixedVersions = @(
+        foreach ($affected in @(Get-OptionalProperty $details 'affected')) {
+            foreach ($range in @(Get-OptionalProperty $affected 'ranges')) {
+                foreach ($event in @(Get-OptionalProperty $range 'events')) {
+                    $fixed = [string](Get-OptionalProperty $event 'fixed')
+                    if (-not [string]::IsNullOrWhiteSpace($fixed)) {
+                        $fixed
+                    }
+                }
+            }
+        }
+    ) | Sort-Object -Unique
     [pscustomobject]@{
         id = $_.id
         severity = $severity
         package = $_.package
         version = $_.version
-        summary = $details.summary
-        fixedVersions = @($details.affected.ranges.events.fixed | Where-Object { $_ } | Sort-Object -Unique)
-        modified = $details.modified
+        summary = [string](Get-OptionalProperty $details 'summary')
+        fixedVersions = @($fixedVersions)
+        modified = [string](Get-OptionalProperty $details 'modified')
     }
 })
 

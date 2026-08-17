@@ -23,8 +23,10 @@ HBTI 目前是探索性的行为倾向评估，不是医学诊断、疾病筛查
 - 不访问外部模型或数据库的默认测试套件
 - 可显式启用的真实模型 Smoke Test
 - 前后端独立镜像、同源 Nginx 代理与可断言的 Compose 健康冒烟
+- 版本化 AI/RAG 评估、k6 L1 容量门禁、API 演示数据、备份恢复和回滚演练
+- 明确保留期限、每日清理任务、运营 Runbook 和机器可读发布清单
 
-Web 账户、Cookie 会话恢复、测评/计划、记录/复盘/教练页面和 Web 容器交付已经实现。负载/AI 评测、备份恢复和回滚演练仍待 Task 23 完成。账户数据导出/删除、OpenAPI 路径契约和可重复执行的 OSV 依赖门禁已经实现。当前版本仍是 L1 公共测试版建设阶段，不是已完成生产验收或企业级认证的产品。
+Web 关键流程、容器交付和 Task 23 发布证据已经实现。账户数据导出/删除、OpenAPI 路径契约和可重复执行的 OSV 依赖门禁也已实现。仓库达到可复现的 L1 公共测试版代码与演练标准；真正公开部署仍需提供 TLS、托管密钥、异地加密备份、告警和已发布镜像 digest 的平台证明。它不是企业级/L2 或受监管医疗产品。
 
 ## 技术栈
 
@@ -43,6 +45,16 @@ Web 账户、Cookie 会话恢复、测评/计划、记录/复盘/教练页面和
 ```
 
 浏览器入口是 `http://localhost:5173/`。默认 `offline` Profile 会让教练调用明确失败，但不会影响账户、测评、计划、记录和复盘。详细配置和清理命令见 [部署指南](docs/DEPLOYMENT.md)。
+
+完整离线 L1 发布证据：
+
+```powershell
+./scripts/evaluation/run-ai-safety-evaluation.ps1
+./scripts/load/run-l1-load.ps1
+./scripts/recovery/test-mysql-restore.ps1
+./scripts/release/test-rollback.ps1
+./scripts/release/verify-release.ps1 -DeploymentMode Offline -Purpose Evidence
+```
 
 直接在主机运行时，应用默认启用 `minimax` Profile：
 
@@ -128,6 +140,8 @@ src/main/resources/prompts/hbti/
 
 - [AI 模型接力交接文档](docs/AI_HANDOFF.md)
 - [现行目标架构](docs/architecture/hbti-coach-architecture.md)
+- [L1 发布清单](docs/RELEASE_CHECKLIST.md)
+- [数据保留与备份策略](docs/operations/data-retention-and-backup.md)
 - [历史演进方案](docs/architecture/xiaozhi-to-hbti-coach-architecture.md)
 - [ADR-001：直接进入 HBTI Coach](docs/decisions/ADR-001-start-hbti-coach-directly.md)
 - [ADR-002：使用 MySQL 作为主存储](docs/decisions/ADR-002-use-mysql-as-primary-store.md)

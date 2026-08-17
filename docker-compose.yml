@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: mysql:8.0
+    image: mysql:8.0@sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-hbti-local-password}
       MYSQL_DATABASE: hbti_coach
@@ -15,7 +15,7 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:7-alpine
+    image: redis:7-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -44,6 +44,13 @@ services:
       AUTH_SECURE_COOKIES: ${AUTH_SECURE_COOKIES:-false}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
       CORS_MAX_AGE: ${CORS_MAX_AGE:-PT1H}
+      COACH_MAX_INPUT_TOKENS: ${COACH_MAX_INPUT_TOKENS:-8000}
+      COACH_MAX_OUTPUT_TOKENS: ${COACH_MAX_OUTPUT_TOKENS:-1500}
+      RETENTION_CLEANUP_ENABLED: ${RETENTION_CLEANUP_ENABLED:-true}
+      RETENTION_CLEANUP_INITIAL_DELAY: ${RETENTION_CLEANUP_INITIAL_DELAY:-PT1H}
+      RETENTION_CLEANUP_INTERVAL: ${RETENTION_CLEANUP_INTERVAL:-PT24H}
+      REFRESH_TOKEN_RETENTION_GRACE: ${REFRESH_TOKEN_RETENTION_GRACE:-P7D}
+      AUDIT_EVENT_RETENTION: ${AUDIT_EVENT_RETENTION:-P180D}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     healthcheck:

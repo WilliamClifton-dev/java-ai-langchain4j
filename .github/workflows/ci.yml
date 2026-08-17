@@ -27,6 +27,10 @@ jobs:
       - name: Run backend tests
         run: mvn --batch-mode --no-transfer-progress clean test
 
+      - name: Run offline AI and RAG evaluation
+        shell: pwsh
+        run: ./scripts/evaluation/run-ai-safety-evaluation.ps1 -DeploymentMode Offline
+
       - name: Build backend package
         run: mvn --batch-mode --no-transfer-progress -DskipTests package
 
@@ -48,6 +52,15 @@ jobs:
         with:
           name: backend-dependency-audit
           path: target/security/osv-report.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload offline AI evaluation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: offline-ai-evaluation
+          path: target/release-evidence/ai-safety/
           if-no-files-found: warn
           retention-days: 14
 

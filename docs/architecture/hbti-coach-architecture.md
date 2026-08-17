@@ -37,8 +37,13 @@ The target architecture is delivered incrementally. A capability is considered i
 | API contract and browser boundary | OpenAPI 1.0.0 path baseline, explicit CORS origins and security-header tests | implemented |
 | Web account, assessment and planning | Cookie/CSRF account shell, profile and safety gate, versioned HBTI questionnaire, continuous result view and guarded plan lifecycle | implemented |
 | Web execution loop | unit-explicit daily tracking, deterministic weekly-review presentation, bounded POST-SSE coach client, cancellation and responsive browser evidence | implemented |
+| Reproducible delivery | pinned non-root backend/Web images, frozen CI installs, same-origin offline Compose and asserting four-service smoke | implemented |
+| L1 release evidence | versioned AI/RAG evaluation, API demo seed, k6 capacity gate, fresh-volume restore, invalid-candidate rollback, exact retention and operator runbooks | implemented |
 
-Operational SLOs below remain release targets until Task 23 records load, recovery, and rollback evidence. Passing unit tests does not by itself make the service production or enterprise grade.
+Task 23 records reproducible pre-release load, recovery and rollback evidence. The
+availability SLO still requires real post-launch measurement, and public deployment
+still requires a platform attestation for TLS, managed secrets, off-host backups and
+alert delivery. Passing repository gates does not make the service enterprise/L2.
 
 ## Architecture Drivers
 
@@ -285,7 +290,7 @@ Only reviewed sources enter the published index. Ingestion records source URL, p
 
 The L1 retriever performs deterministic local lexical scoring over Chinese Han bigrams and normalized alphanumeric terms. SQL filters `PUBLISHED` versions and exact locale before reading at most 500 ordered candidate chunks; Java applies a `0.20` match threshold and returns at most five passages. Every passage carries source key, title, HTTPS URL, publisher, locale, version number and content hash in LangChain4j metadata, and the same provenance is prepended to the model-visible text. Invalid query, locale, or result-limit input fails closed, and below-threshold retrieval returns no evidence.
 
-This implementation is deliberately external-service-free and suitable for the bounded L1 corpus. It is not a vector index, semantic search system, or evidence of vector-scale throughput. Concurrent first ingestion of the same new source is protected by the database unique constraint but one caller may receive a conflict rather than a transparent replay; an operator retry resolves to the stored version. Task 23 must measure corpus size, recall, latency, and concurrency before changing that boundary. ADR-010 records the decision.
+This implementation is deliberately external-service-free and suitable for the bounded L1 corpus. It is not a vector index, semantic search system, or evidence of vector-scale throughput. Concurrent first ingestion of the same new source is protected by the database unique constraint but one caller may receive a conflict rather than a transparent replay; an operator retry resolves to the stored version. The Task 23 release evaluation measures recall and latency with 500 candidate chunks and 10 concurrent queries under the two-second dependency budget. Growing beyond that boundary requires new evidence. ADR-010 records the decision.
 
 RAG release gates include retrieval recall, citation correctness, groundedness, prompt-injection resistance, and stale-document behavior on a versioned evaluation set.
 
@@ -311,7 +316,7 @@ Circuit breakers prevent cascading model and retrieval failures. Retry budgets a
 
 Task 15 implements the coach model controls as single-process L1 state. At most five model streams run concurrently by default. A stream has a configurable 5-second first-token and 30-second total budget; timeout, provider failure, completion, and client cancellation compete for one atomic terminal state. Three consecutive model-bound failures open the circuit for 30 seconds, after which only one half-open probe runs. Local concurrency rejection and client cancellation do not count as provider failure. The test profile replaces the external model port with an immediate failure and proves deterministic calculation remains available.
 
-Client disconnect or timeout cancels the application session, releases its local concurrency permit, removes its tool authorization registration, and suppresses late tokens. LangChain4j `1.0.0-beta3` does not expose a provider-request cancellation handle, so this boundary does not claim that the underlying HTTP request is physically interrupted. Shared request-rate enforcement is implemented through Redis, while the stream semaphore and model circuit remain process-local; deployment and Task 23 evidence are still required before horizontal scaling claims.
+Client disconnect or timeout cancels the application session, releases its local concurrency permit, removes its tool authorization registration, and suppresses late tokens. LangChain4j `1.0.0-beta3` does not expose a provider-request cancellation handle, so this boundary does not claim that the underlying HTTP request is physically interrupted. Shared request-rate enforcement is implemented through Redis, while the stream semaphore and model circuit remain process-local; the L1 load result does not support horizontal scaling claims.
 
 Task 16 permits only bounded expiring or reconstructable Redis state. Login counters expire after 15 minutes by default, coach counters after 1 minute, and request leases are constrained to 1 second through 5 minutes (30 seconds for assessment submissions). Rate and lease keys contain SHA-256 digests rather than raw IP, email, owner, or idempotency values. Lease values are random-token digests and release uses atomic compare-and-delete. The only read cache stores the public published HBTI definition for 1 hour under an explicit versioned namespace. Cache miss, corrupt data, timeout, and population failure read MySQL. Completed idempotency results, user facts, credentials, tokens, prompts, messages, answers, health measurements and model output never use Redis as durable storage. ADR-012 records the boundary.
 
@@ -321,7 +326,7 @@ Every HTTP boundary accepts a safe 1-to-64-character `X-Request-ID` or generates
 
 Spring Actuator supplies HTTP and resource metrics. Application Micrometer meters add audit persistence outcomes, model-stream duration by eight fixed terminal outcomes, first emitted chunk duration, emitted text-chunk count, four SSE event types and six allowlisted tool names with bounded result codes. Labels never contain user ID, request ID, raw URL, prompt/message/model content, exception text or arbitrary tool arguments. The emitted-token counter measures SSE text chunks, not provider tokenizer usage or billing cost.
 
-Public `/actuator/health/liveness` contains process liveness only. Public `/actuator/health/readiness` contains process readiness, MySQL and Redis; either dependency can remove the instance from traffic without declaring the process dead. Component names are visible for orchestration while diagnostic details require the dedicated `ACTUATOR_ADMIN` authority and remain hidden from ordinary authenticated users. ADR-013 records these choices. Distributed traces, dashboards, alerts, cost accounting and 30-day SLO evidence do not yet exist and remain Task 23 release gates.
+Public `/actuator/health/liveness` contains process liveness only. Public `/actuator/health/readiness` contains process readiness, MySQL and Redis; either dependency can remove the instance from traffic without declaring the process dead. Component names are visible for orchestration while diagnostic details require the dedicated `ACTUATOR_ADMIN` authority and remain hidden from ordinary authenticated users. ADR-013 records these choices. The release gate requires platform attestation for log/metric collection and alert delivery before public traffic. Distributed tracing is not an L1 dependency. Provider billing evidence is mandatory for model-enabled release; the application still does not emit tokenizer-accurate billing telemetry. A rolling 30-day availability result can only be collected after launch.
 
 ## SLO And Capacity
 
@@ -330,7 +335,11 @@ Public `/actuator/health/liveness` contains process liveness only. Public `/actu
 - Up to 1,000 registered users, 100 daily active users.
 - 20 concurrent interactive sessions and 5 concurrent model generations.
 - 100 API requests per second short burst; 20 sustained requests per second excluding model tokens.
-- Maximum 4,000 characters per user message, 8,000 input tokens, 1,500 output tokens, and 10 tool calls per request.
+- User messages are limited to 4,000 characters. Provider builders enforce at most
+  1,500 output tokens and AiServices enforces 10 sequential tool calls. Ollama uses a
+  9,500-token context window for an intended maximum 8,000-token input plus output.
+  OpenAI-compatible input tokenization is provider-specific, so model-enabled release
+  evidence must prove no evaluated request exceeded 8,000 input tokens.
 - A model request is capped at 0.02 USD equivalent at the provider-account policy boundary; provider usage must be recorded as bounded aggregates before billing-based enforcement is enabled. Token counts in L1 telemetry are emitted chunks, not billing usage.
 
 ### L1 Internal SLO
@@ -350,8 +359,8 @@ Promotion to L2 requires 30 days of measured compliance, load-test evidence, on-
 
 - Authenticated export and deletion are implemented for the L1 bounded dataset. Export is owner-scoped and excludes credentials, token material, idempotency/payload hashes and model nonces. Deletion requires the exact `DELETE_MY_ACCOUNT` confirmation, clears cookies, anonymizes retained audit rows, hard-deletes the account and owned data, and preserves global HBTI definitions and reviewed knowledge.
 - Immediate account-status validation rejects access JWTs for missing, locked or deleted accounts. This is a database-backed invalidation check, not a claim that every already-issued token is cryptographically revoked.
-- Current L1 retention is bounded by the account lifecycle implementation and operational backup policy: export/deletion requests are synchronous and capped at 1,000 primary rows and 10,000 nested rows. Task 23 must still publish the exact backup expiry schedule, restore evidence and any scheduled retention worker before public launch.
-- L1 target: MySQL RPO 1 hour and RTO 4 hours, verified by restoration exercise.
+- Export/deletion requests are synchronous and capped at 1,000 primary rows and 10,000 nested rows. User-owned primary facts remain until account deletion; no inactive-account auto-deletion is claimed. The daily retention job deletes refresh-token hashes seven days after expiry and audit events after 180 days.
+- Encrypted off-host backups run hourly, retain hourly copies for 48 hours and one daily copy for 35 days, then expire permanently. The fresh-volume drill compares 21 durable table invariants, retains no raw dump, and gates the one-hour RPO/four-hour RTO objectives. Exact rules are in `docs/operations/data-retention-and-backup.md`.
 - Prompt, model, assessment and knowledge versions remain traceable after user-content deletion without retaining deleted user content.
 
 ## Deployment
@@ -366,12 +375,13 @@ product capabilities runnable without a model credential while model calls fail
 locally and do not contact a provider. CI repeats backend/frontend gates and this
 Compose smoke.
 
-This remains an L1 verification topology. Production uses managed equivalents where
-appropriate and must add TLS, managed secrets, backups, alert delivery and immutable
-image publication. Schema migration is a controlled release step. Secrets enter
-through the deployment platform and never image layers or source files.
+This remains an L1 verification topology. External build/runtime images are pinned by
+digest. Public deployment must provide an attestation for TLS, managed secrets,
+encrypted off-host backups, alert delivery, SLO collection and published application
+image digests. Schema migration is a controlled release step. Secrets enter through
+the deployment platform and never image layers or source files.
 
-Deployments are rolling or blue/green once more than one instance exists. Every release records artifact version, migration range, prompt/model policy, evaluation report and rollback command.
+Deployments are rolling or blue/green once more than one instance exists. Every release records artifact version, migration range, prompt/model policy, evaluation report and rollback command. `scripts/release/verify-release.ps1` emits a hash-bearing evidence manifest and requires the platform attestation for `PublicDeployment` purpose.
 
 Authentication requires `AUTH_SIGNING_KEY` with at least 32 UTF-8 bytes. Production keeps `AUTH_SECURE_COOKIES=true`; the false setting exists only for local HTTP and isolated tests. Signing-key rotation requires an explicit multi-key validation design before L1 launch and is tracked in the authentication ADR.
 

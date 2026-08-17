@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "1.0.0",
+  "releaseLevel": "L1_PUBLIC_BETA",
+  "requiredReports": {
+    "aiSafety": "target/release-evidence/ai-safety/report.json",
+    "demo": "target/release-evidence/demo/report.json",
+    "load": "target/release-evidence/load/report.json",
+    "restore": "target/release-evidence/restore/report.json",
+    "rollback": "target/release-evidence/rollback/report.json"
+  },
+  "capacity": {
+    "registeredUsers": 1000,
+    "dailyActiveUsers": 100,
+    "interactiveSessions": 20,
+    "interactiveSessionSeconds": 10,
+    "modelGenerations": 5,
+    "sustainedRps": 20,
+    "sustainedSeconds": 60,
+    "burstRps": 100,
+    "burstSeconds": 10,
+    "p95LimitMs": 500,
+    "p99LimitMs": 1500
+  },
+  "recovery": {
+    "rpoMinutes": 60,
+    "rtoSeconds": 14400,
+    "backupExpiryDays": 35,
+    "mysqlImage": "mysql:8.0@sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b"
+  },
+  "model": {
+    "maxInputTokens": 8000,
+    "maxOutputTokens": 1500,
+    "maxSequentialTools": 10,
+    "maxConcurrentGenerations": 5,
+    "maxRequestCostUsd": 0.02
+  },
+  "retention": {
+    "refreshTokenPostExpiryGraceDays": 7,
+    "auditEventDays": 180,
+    "applicationLogDays": 30,
+    "aggregateMetricDays": 90
+  }
+}

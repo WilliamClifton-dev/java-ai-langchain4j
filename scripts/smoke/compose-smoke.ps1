@@ -6,6 +6,8 @@ param(
     [string]$ProjectName = 'hbti-smoke',
     [ValidatePattern('^target[/\\][A-Za-z0-9._-]+(?:[/\\][A-Za-z0-9._-]+)*$')]
     [string]$EvidenceDirectory = 'target/compose-smoke',
+    [ValidateRange(1024, 65535)][int]$WebPort = 5272,
+    [ValidateRange(1024, 65535)][int]$BackendPort = 8179,
     [switch]$KeepRunning
 )
 
@@ -14,6 +16,12 @@ $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $evidencePath = Join-Path $repositoryRoot $EvidenceDirectory
 $services = @('mysql', 'redis', 'backend', 'web')
 $succeeded = $false
+$originalWebPort = $env:WEB_PORT
+$originalBackendPort = $env:BACKEND_PORT
+$env:WEB_PORT = $WebPort.ToString()
+$env:BACKEND_PORT = $BackendPort.ToString()
+$webBaseUrl = "http://127.0.0.1:$WebPort"
+$backendBaseUrl = "http://127.0.0.1:$BackendPort"
 
 function Invoke-Compose {
     param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
@@ -96,18 +104,18 @@ try {
     (& docker compose --project-name $ProjectName ps) |
         Set-Content (Join-Path $evidencePath 'compose-ps.txt') -Encoding utf8
 
-    Assert-UpResponse 'http://127.0.0.1:8080/actuator/health/readiness' 'backend-readiness.json'
+    Assert-UpResponse "$backendBaseUrl/actuator/health/readiness" 'backend-readiness.json'
 
-    $webHealth = Invoke-WebRequest -Uri 'http://127.0.0.1:5173/healthz' -UseBasicParsing -TimeoutSec 15
+    $webHealth = Invoke-WebRequest -Uri "$webBaseUrl/healthz" -UseBasicParsing -TimeoutSec 15
     $webHealthContent = Get-ResponseText $webHealth
     if ($webHealth.StatusCode -ne 200 -or $webHealthContent.Trim() -ne 'ok') {
         throw "Web health assertion failed"
     }
     $webHealthContent | Set-Content (Join-Path $evidencePath 'web-health.txt') -Encoding utf8
 
-    Assert-UpResponse 'http://127.0.0.1:5173/actuator/health/readiness' 'proxied-readiness.json'
+    Assert-UpResponse "$webBaseUrl/actuator/health/readiness" 'proxied-readiness.json'
 
-    $index = Invoke-WebRequest -Uri 'http://127.0.0.1:5173/' -UseBasicParsing -TimeoutSec 15
+    $index = Invoke-WebRequest -Uri "$webBaseUrl/" -UseBasicParsing -TimeoutSec 15
     $indexContent = Get-ResponseText $index
     if ($index.StatusCode -ne 200 -or $indexContent -notmatch '<div id="root"></div>') {
         throw "Web root did not return the production SPA shell"
@@ -132,6 +140,16 @@ finally {
         }
     }
     finally {
+        if ($null -eq $originalWebPort) {
+            Remove-Item Env:WEB_PORT -ErrorAction SilentlyContinue
+        } else {
+            $env:WEB_PORT = $originalWebPort
+        }
+        if ($null -eq $originalBackendPort) {
+            Remove-Item Env:BACKEND_PORT -ErrorAction SilentlyContinue
+        } else {
+            $env:BACKEND_PORT = $originalBackendPort
+        }
         Pop-Location
     }
 }

@@ -13,8 +13,9 @@ dependencies:
 | `redis` | Bounded ephemeral controls and reconstructable cache | internal network only |
 
 The included Compose file is a production-like L1 verification environment, not a
-complete cloud production topology. It does not provide TLS termination, managed
-secrets, off-host backups, alert delivery, or multi-instance orchestration.
+complete cloud production topology. External images are pinned by digest, but Compose
+does not provide TLS termination, managed secrets, off-host backups, alert delivery,
+published application-image digests or multi-instance orchestration.
 
 ## Prerequisites
 
@@ -115,6 +116,12 @@ Manual startup requires reachable MySQL and Redis plus the variables cataloged i
 The package, frontend bundle, dependency report and Compose evidence are uploaded as
 short-lived workflow artifacts.
 
+The manually dispatched `L1 Release Evidence` workflow additionally runs the
+versioned offline AI/RAG evaluation, API-only demo seed, 20 RPS sustained and 100 RPS
+burst k6 gate, fresh-volume MySQL restore, invalid-candidate rollback and release
+manifest verification. Local equivalents are listed in `docs/RELEASE_CHECKLIST.md`.
+Model-enabled releases require exact provider/model evaluation and cost evidence.
+
 ## Production Checklist
 
 - [ ] Use managed secret injection; no defaults or `.env` files in deployed artifacts.
@@ -122,10 +129,16 @@ short-lived workflow artifacts.
 - [ ] Keep Redis non-authoritative; loss of Redis must not lose user facts.
 - [ ] Terminate TLS and keep `AUTH_SECURE_COOKIES=true`.
 - [ ] Restrict the browser origin and direct backend exposure.
-- [ ] Publish immutable image digests and the Flyway migration range.
+- [ ] Publish application image digests and record the Flyway migration range; all
+      external build/runtime image inputs are already source-pinned by digest.
 - [ ] Configure log/metric collection and actionable alerts.
-- [ ] Complete Task 23 load, AI evaluation, restore and rollback exercises.
+- [ ] Run current-commit Task 23 load, AI evaluation, restore and rollback exercises.
 - [ ] Record the release checklist and rollback command before public traffic.
+
+`./scripts/release/verify-release.ps1 -Purpose PublicDeployment` requires a reviewed
+platform attestation for TLS, managed secrets, hourly encrypted off-host backups,
+35-day expiry, alert delivery, SLO collection and published backend/Web digests. The
+default `Evidence` purpose deliberately does not claim those external controls exist.
 
 Passing this guide's smoke test is L1 delivery evidence. It is not L2/enterprise or
 30-day production-SLO evidence.
