@@ -44,18 +44,17 @@ export function AssessmentPage() {
     if (!item) return;
     setAnswers((current) => ({ ...current, [item.itemKey]: value }));
     setValidationMessage(null);
+    if (questionIndex < definition!.items.length - 1) {
+      setQuestionIndex((current) => current + 1);
+    }
   }
 
-  function next() {
+  function submit() {
     if (!item || !answers[item.itemKey]) {
       setValidationMessage('请选择一个最符合当前情况的选项');
       return;
     }
-    if (questionIndex === definition!.items.length - 1) {
-      submitMutation.mutate();
-      return;
-    }
-    setQuestionIndex((current) => current + 1);
+    submitMutation.mutate();
   }
 
   function back() {
@@ -84,11 +83,13 @@ export function AssessmentPage() {
           <div className="progress-track"><span style={{ width: `${((questionIndex + 1) / definition!.items.length) * 100}%` }} /></div>
           <div className="question-block">
             <p className="eyebrow">{item?.hintZh}</p><h2 id="question-title">{item?.titleZh}</h2>
+            {item?.itemKey === 'q4' && <p className="question-explanation">这里的“反应特别强”是指：看到或吃到这类食物后，容易产生明显的想吃、继续吃或优先选择它们的冲动。</p>}
             <fieldset className="scale-fieldset"><legend>符合程度</legend><div className="scale-options">{SCALE.map((value) => <label className={answers[item!.itemKey] === value ? 'scale-option selected' : 'scale-option'} key={value}><input type="radio" name={item!.itemKey} value={value} checked={answers[item!.itemKey] === value} onChange={() => choose(value)} /><span>{value}</span></label>)}</div><div className="scale-legend"><span>完全不符合</span><span>非常符合</span></div></fieldset>
+            <p className="question-flow-hint">选择后自动进入下一题；可以用“上一题”返回修改。</p>
             {validationMessage && <p className="form-error" role="alert">{validationMessage}</p>}
             {submitMutation.isError && <p className="form-error" role="alert">{isApiError(submitMutation.error) ? submitMutation.error.message : '提交失败，请保留当前答案后重试'}</p>}
           </div>
-          <div className="assessment-actions"><button className="button button-secondary" type="button" onClick={back} disabled={questionIndex === 0}><ArrowLeft size={17} />上一题</button><button className="button button-primary" type="button" onClick={next} disabled={submitMutation.isPending}>{submitMutation.isPending ? '正在计算' : questionIndex === definition!.items.length - 1 ? '提交测评' : '下一题'}{questionIndex < definition!.items.length - 1 && <ArrowRight size={17} />}</button></div>
+          <div className="assessment-actions"><button className="button button-secondary" type="button" onClick={back} disabled={questionIndex === 0}><ArrowLeft size={17} />上一题</button>{questionIndex === definition!.items.length - 1 && <button className="button button-primary" type="button" onClick={submit} disabled={submitMutation.isPending}>{submitMutation.isPending ? '正在计算' : '提交测评'}<ArrowRight size={17} /></button>}</div>
         </section>
       )}
     </main>

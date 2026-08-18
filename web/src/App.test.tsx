@@ -130,7 +130,8 @@ describe('account experience', () => {
   it('walks through the HBTI questionnaire and submits all answers once', async () => {
     window.history.replaceState({}, '', '/assessment');
     const items = Array.from({ length: 16 }, (_, index) => ({
-      itemKey: `q${index + 1}`, ordinal: index + 1, titleZh: `问题 ${index + 1}`,
+      itemKey: `q${index + 1}`, ordinal: index + 1,
+      titleZh: index === 3 ? '我对甜食、精制主食或奶茶这类高奖励碳水的反应特别强。' : `问题 ${index + 1}`,
       hintZh: '请选择最符合你近况的选项', titleEn: `Question ${index + 1}`, hintEn: 'Choose one',
     }));
     const fetchMock = vi.fn()
@@ -151,8 +152,18 @@ describe('account experience', () => {
     expect(await screen.findByRole('heading', { name: 'HBTI 行为倾向测评' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '开始测评' }));
     for (let index = 0; index < 16; index += 1) {
+      if (index === 3) {
+        expect(screen.getByText(/容易产生明显的想吃、继续吃或优先选择它们的冲动/)).toBeInTheDocument();
+      }
       await user.click(screen.getByRole('radio', { name: '3' }));
-      await user.click(screen.getByRole('button', { name: index === 15 ? '提交测评' : '下一题' }));
+      if (index === 15) {
+        await user.click(screen.getByRole('button', { name: '提交测评' }));
+      } else {
+        expect(await screen.findByRole('heading', { name: index === 2
+          ? '我对甜食、精制主食或奶茶这类高奖励碳水的反应特别强。'
+          : `问题 ${index + 2}` })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: '下一题' })).not.toBeInTheDocument();
+      }
     }
     expect(await screen.findByRole('heading', { name: 'HBTI 维度画像' })).toBeInTheDocument();
     expect(screen.getByText('FHRN')).toBeInTheDocument();
