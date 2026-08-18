@@ -1,14 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, CheckCircle2, ClipboardCheck, Play, ShieldAlert } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import type { WeightPlan } from '../api/domain';
 import { api, isApiError } from '../api/http';
 
 const GOALS: Array<{ value: WeightPlan['goal']; label: string; detail: string }> = [
-  { value: 'LOSS', label: '温和减重', detail: '以保守的周变化范围为参考' },
-  { value: 'MAINTENANCE', label: '维持体重', detail: '围绕当前估算能量范围保持稳定' },
-  { value: 'GAIN', label: '温和增重', detail: '以渐进方式支持体重增加' },
+  { value: 'LOSS', label: '减脂 / 减重', detail: '以温和、可持续的节奏推进' },
+  { value: 'MAINTENANCE', label: '保持体重 / 身体重塑', detail: '围绕当前状态，逐步改善体成分和习惯' },
+  { value: 'GAIN', label: '增肌 / 增重', detail: '以渐进方式支持力量和体重增加' },
 ];
 
 function keyFor(prefix: string) {
@@ -43,12 +44,21 @@ export function PlanPage() {
     mutationFn: () => api.createPlanDraft(goal, draftKey.current ?? (draftKey.current = keyFor('plan-draft'))),
     onSuccess: (created) => setDraft(created),
   });
-  const transitionMutation = useMutation({
-    mutationFn: (action: 'validation' | 'confirmation') => api.transitionPlan(draft!, action),
-    onSuccess: (updated) => setDraft(updated),
-  });
-  const activateMutation = useMutation({
-    mutationFn: () => api.activatePlan(draft!, activationKey.current ?? (activationKey.current = keyFor('plan-activation'))),
+  const finalizeMutation = useMutation({
+    mutationFn: async () => {
+      if (!draft) throw new Error('A draft is required');
+      let current = draft;
+      if (current.status === 'DRAFT') {
+        current = await api.transitionPlan(current, 'validation');
+        setDraft(current);
+      }
+      if (current.status === 'VALIDATED') {
+        current = await api.transitionPlan(current, 'confirmation');
+        setDraft(current);
+      }
+      if (current.status !== 'CONFIRMED') return current;
+      return api.activatePlan(current, activationKey.current ?? (activationKey.current = keyFor('plan-activation')));
+    },
     onSuccess: async (active) => {
       setDraft(active);
       queryClient.setQueryData(['plan', 'active'], active);
@@ -74,11 +84,7 @@ export function PlanPage() {
   if (prerequisiteLoading) return <main className="centered-state"><span className="spinner" /><p>正在读取计划前置条件</p></main>;
   if (prerequisiteError) return <main className="centered-state" role="alert"><h1>计划暂时不可用</h1><p>{errorText(prerequisiteError)}</p></main>;
 
-  function transition(action: 'validation' | 'confirmation') {
-    if (draft) transitionMutation.mutate(action);
-  }
-
-  const actionPending = createMutation.isPending || transitionMutation.isPending || activateMutation.isPending;
+  const actionPending = createMutation.isPending || finalizeMutation.isPending;
 
   return (
     <main className="workspace workspace-wide plan-page">
@@ -94,11 +100,11 @@ export function PlanPage() {
       </section>
 
       {plan ? (
-        <PlanSummary plan={plan} actionPending={actionPending} canReplace={plan.status === 'ACTIVE' && prerequisitesReady} onValidate={() => transition('validation')} onConfirm={() => transition('confirmation')} onActivate={() => activateMutation.mutate()} onReplace={() => setIsCreatingReplacement(true)} />
+        <PlanSummary plan={plan} actionPending={actionPending} canReplace={plan.status === 'ACTIVE' && prerequisitesReady} onAdvance={() => finalizeMutation.mutate()} onReplace={() => setIsCreatingReplacement(true)} />
       ) : !prerequisitesReady ? (
         <section className="notice notice-warning plan-blocked" role="status">
           <ShieldAlert size={19} />
-          <span><strong>自动计划已暂停</strong>请先完成安全筛查并确认可以进入自动计划。</span>
+          <span><strong>自动计划已暂停</strong>请先完成安全筛查并确认可以进入自动计划。<span className="plan-blocked-links"><Link to="/profile">去完善档案与筛查</Link><Link to="/assessment">去完成 HBTI 测评</Link></span></span>
         </section>
       ) : (
         <section className="data-section plan-builder">
@@ -111,7 +117,7 @@ export function PlanPage() {
           <div className="section-actions plan-builder-actions">{activePlan && <button className="button button-secondary" type="button" onClick={() => { setIsCreatingReplacement(false); draftKey.current = undefined; }} disabled={actionPending}>返回当前计划</button>}<button className="button button-primary" type="button" onClick={() => createMutation.mutate()} disabled={actionPending}><ClipboardCheck size={17} />{createMutation.isPending ? '正在生成' : '生成计划草稿'}</button></div>
         </section>
       )}
-      {(transitionMutation.isError || activateMutation.isError) && <div className="notice notice-error" role="alert"><AlertTriangle size={17} />{errorText(transitionMutation.error ?? activateMutation.error)}</div>}
+      {finalizeMutation.isError && <div className="notice notice-error" role="alert"><AlertTriangle size={17} />{errorText(finalizeMutation.error)}</div>}
     </main>
   );
 }
@@ -120,12 +126,14 @@ function Prerequisite({ label, ready, detail }: { label: string; ready: boolean;
   return <article className={ready ? 'prerequisite ready' : 'prerequisite'}><span>{ready ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}</span><div><strong>{label}</strong><small>{detail}</small></div></article>;
 }
 
-function PlanSummary({ plan, actionPending, canReplace, onValidate, onConfirm, onActivate, onReplace }: { plan: WeightPlan; actionPending: boolean; canReplace: boolean; onValidate: () => void; onConfirm: () => void; onActivate: () => void; onReplace: () => void }) {
+function PlanSummary({ plan, actionPending, canReplace, onAdvance, onReplace }: { plan: WeightPlan; actionPending: boolean; canReplace: boolean; onAdvance: () => void; onReplace: () => void }) {
+  const goalLabel = plan.goal === 'LOSS' ? '减脂 / 减重' : plan.goal === 'GAIN' ? '增肌 / 增重' : '保持体重 / 身体重塑';
   return <section className="data-section plan-summary">
-    <div className="plan-summary-heading"><div><p className="eyebrow">{plan.goal === 'LOSS' ? '温和减重' : plan.goal === 'GAIN' ? '温和增重' : '维持体重'} · v{plan.versionNo}</p><h2>{plan.status === 'ACTIVE' ? '当前计划已启用' : '计划正在准备'}</h2></div><span className={`plan-status plan-status-${plan.status.toLowerCase()}`}>{statusLabel(plan.status)}</span></div>
+    <div className="plan-summary-heading"><div><p className="eyebrow">{goalLabel} · v{plan.versionNo}</p><h2>{plan.status === 'ACTIVE' ? '当前计划已启用' : '计划正在准备'}</h2></div><span className={`plan-status plan-status-${plan.status.toLowerCase()}`}>{statusLabel(plan.status)}</span></div>
     <div className="plan-metrics"><Metric label="BMI 估算" value={plan.bmi.toFixed(1)} suffix="" /><Metric label="基础代谢" value={String(plan.bmrKcalPerDay)} suffix="kcal/日" /><Metric label="总消耗估算" value={String(plan.tdeeKcalPerDay)} suffix="kcal/日" /><Metric label="目标能量范围" value={`${plan.energyMinKcalPerDay}–${plan.energyMaxKcalPerDay}`} suffix="kcal/日" /></div>
     <p className="plan-guidance">{plan.guidance}</p>
-    {(plan.status !== 'ACTIVE' || canReplace) && <div className="plan-actions">{plan.status === 'DRAFT' && <button className="button button-primary" type="button" onClick={onValidate} disabled={actionPending}>校验计划</button>}{plan.status === 'VALIDATED' && <button className="button button-primary" type="button" onClick={onConfirm} disabled={actionPending}>确认计划</button>}{plan.status === 'CONFIRMED' && <button className="button button-primary" type="button" onClick={onActivate} disabled={actionPending}><Play size={17} />{actionPending ? '正在启用' : '启用计划'}</button>}{plan.status === 'ACTIVE' && canReplace && <button className="button button-secondary" type="button" onClick={onReplace}>制定新计划</button>}</div>}
+    {(plan.status !== 'ACTIVE' || canReplace) && <div className="plan-actions">{plan.status === 'DRAFT' && <button className="button button-primary" type="button" onClick={onAdvance} disabled={actionPending}><Play size={17} />{actionPending ? '正在确认并启用' : '确认并启用计划'}</button>}{plan.status === 'VALIDATED' && <button className="button button-primary" type="button" onClick={onAdvance} disabled={actionPending}><Play size={17} />{actionPending ? '正在确认并启用' : '确认并启用计划'}</button>}{plan.status === 'CONFIRMED' && <button className="button button-primary" type="button" onClick={onAdvance} disabled={actionPending}><Play size={17} />{actionPending ? '正在启用' : '启用计划'}</button>}{plan.status === 'ACTIVE' && canReplace && <button className="button button-secondary" type="button" onClick={onReplace}>制定新计划</button>}</div>}
+    {plan.status === 'ACTIVE' && <div className="plan-next-links"><Link className="button button-secondary" to="/tracking">记录今天</Link><Link className="button button-secondary" to="/review">查看七日回顾</Link></div>}
   </section>;
 }
 

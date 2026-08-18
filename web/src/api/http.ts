@@ -1,5 +1,6 @@
 import type {
   CoachScene,
+  CoachCapabilities,
   CoachStreamEvent,
   CoachStreamInput,
   DailyMetric,
@@ -298,6 +299,15 @@ export const api = {
   getWeeklyReview: (reviewId: string) => request<WeeklyReview>(
     `/api/v1/tracking/weekly-reviews/${encodeURIComponent(reviewId)}`,
   ),
+  getCoachCapabilities: async () => {
+    const value = await request<unknown>('/api/v1/coach/capabilities');
+    if (!value || typeof value !== 'object' || typeof (value as CoachCapabilities).available !== 'boolean'
+      || !['OFFLINE', 'LOCAL', 'MINIMAX'].includes((value as CoachCapabilities).mode)
+      || typeof (value as CoachCapabilities).message !== 'string') {
+      throw new ApiError(502, 'INVALID_CAPABILITY_RESPONSE', '教练能力状态不可用');
+    }
+    return value as CoachCapabilities;
+  },
   streamCoach,
 };
 

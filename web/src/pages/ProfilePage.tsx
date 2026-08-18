@@ -34,7 +34,7 @@ function defaultProfile(): ProfileInput {
     calculationSex: 'FEMALE',
     heightCm: 165,
     currentWeightKg: 65,
-    targetWeightKg: 60,
+    targetWeightKg: 65,
     activityLevel: 'LIGHT',
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Hong_Kong',
   };
@@ -56,7 +56,9 @@ export function ProfilePage() {
   const screeningMissing = isApiError(screeningQuery.error, 'PROFILE_NOT_FOUND');
   const [profile, setProfile] = useState<ProfileInput>(defaultProfile);
   const [answers, setAnswers] = useState<ScreeningInput>(EMPTY_SCREENING);
+  const [noRiskConfirmed, setNoRiskConfirmed] = useState(false);
   const [screeningRequired, setScreeningRequired] = useState(false);
+  const [screeningValidation, setScreeningValidation] = useState<string | null>(null);
 
   useEffect(() => {
     if (profileQuery.data) {
@@ -65,11 +67,28 @@ export function ProfilePage() {
     }
   }, [profileQuery.data]);
 
+  useEffect(() => {
+    const current = screeningQuery.data;
+    if (!current) return;
+    const reasons = new Set(current.reasonCodes ?? []);
+    setAnswers({
+      pregnantOrBreastfeeding: reasons.has('PREGNANCY_OR_BREASTFEEDING'),
+      eatingDisorderHistory: reasons.has('EATING_DISORDER_SUPPORT'),
+      medicalGuidanceRequired: reasons.has('MEDICAL_REVIEW'),
+      weightAffectingMedication: reasons.has('WEIGHT_AFFECTING_MEDICATION'),
+      concerningSymptoms: reasons.has('CONCERNING_SYMPTOMS'),
+    });
+    setNoRiskConfirmed(current.automaticPlanningAllowed);
+  }, [screeningQuery.data]);
+
   const saveProfile = useMutation({
     mutationFn: api.saveProfile,
     onSuccess: async (saved) => {
       queryClient.setQueryData(['profile'], saved);
       setScreeningRequired(true);
+      setAnswers(EMPTY_SCREENING);
+      setNoRiskConfirmed(false);
+      setScreeningValidation(null);
       await queryClient.invalidateQueries({ queryKey: ['screening', 'current'] });
     },
   });
@@ -88,10 +107,22 @@ export function ProfilePage() {
 
   function submitScreening(event: FormEvent) {
     event.preventDefault();
+    const hasRiskSelection = Object.values(answers).some(Boolean);
+    if (!noRiskConfirmed && !hasRiskSelection) {
+      setScreeningValidation('请明确确认“以上情况均不符合我”，或选择至少一项需要关注的情况');
+      return;
+    }
+    setScreeningValidation(null);
     saveScreening.mutate(answers);
   }
 
   const screening = screeningQuery.data;
+  const screeningReady = Boolean(
+    screening
+      && typeof screening.status === 'string'
+      && typeof screening.automaticPlanningAllowed === 'boolean'
+      && typeof screening.guidance === 'string',
+  );
 
   return (
     <main className="workspace workspace-wide">
@@ -113,12 +144,11 @@ export function ProfilePage() {
             <span className="step-index">01</span>
             <div><h2>计算档案</h2><p>所有测量均使用公制单位。</p></div>
           </div>
-          <div className="form-grid">
+            <div className="form-grid">
             <label className="field"><span>出生日期</span><input type="date" required value={profile.dateOfBirth} onChange={(e) => setProfile({ ...profile, dateOfBirth: e.target.value })} /></label>
             <label className="field"><span>计算用性别</span><select value={profile.calculationSex} onChange={(e) => setProfile({ ...profile, calculationSex: e.target.value as ProfileInput['calculationSex'] })}><option value="FEMALE">女性公式</option><option value="MALE">男性公式</option></select></label>
             <label className="field"><span>身高（cm）</span><input type="number" min="100" max="250" step="0.1" required value={profile.heightCm} onChange={(e) => setProfile({ ...profile, heightCm: e.target.valueAsNumber })} /></label>
             <label className="field"><span>当前体重（kg）</span><input type="number" min="30" max="350" step="0.1" required value={profile.currentWeightKg} onChange={(e) => setProfile({ ...profile, currentWeightKg: e.target.valueAsNumber })} /></label>
-            <label className="field"><span>目标体重（kg）</span><input type="number" min="30" max="350" step="0.1" required value={profile.targetWeightKg} onChange={(e) => setProfile({ ...profile, targetWeightKg: e.target.valueAsNumber })} /></label>
             <label className="field"><span>日常活动水平</span><select value={profile.activityLevel} onChange={(e) => setProfile({ ...profile, activityLevel: e.target.value as ProfileInput['activityLevel'] })}>{ACTIVITY_OPTIONS.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
             <label className="field field-span"><span>时区</span><input type="text" maxLength={64} required value={profile.timeZone} onChange={(e) => setProfile({ ...profile, timeZone: e.target.value })} /></label>
           </div>
@@ -130,30 +160,39 @@ export function ProfilePage() {
 
       {profileQuery.data && (
         <form className="data-section" onSubmit={submitScreening}>
-          <div className="section-heading">
-            <span className="step-index">02</span>
-            <div><h2>安全筛查</h2><p>如实选择；风险项只用于决定是否暂停自动计划。</p></div>
-          </div>
-          <div className="screening-list">
+            <div className="section-heading">
+              <span className="step-index">02</span>
+              <div><h2>安全筛查</h2><p>如实选择；风险项只用于决定是否暂停自动计划。减脂、维持或增肌方向会在计划页选择。</p></div>
+            </div>
+            <p className="screening-helper">请明确确认“以上情况均不符合我”，或选择至少一项需要关注的情况</p>
+            <div className="screening-list">
             {SCREENING_ITEMS.map((item) => (
               <label className="screening-row" key={item.key}>
                 <span><strong>{item.label}</strong><small>{item.detail}</small></span>
-                <input type="checkbox" checked={answers[item.key]} onChange={(e) => setAnswers({ ...answers, [item.key]: e.target.checked })} />
+                <input type="checkbox" checked={answers[item.key]} onChange={(e) => { setAnswers({ ...answers, [item.key]: e.target.checked }); setNoRiskConfirmed(false); setScreeningValidation(null); }} />
               </label>
             ))}
-          </div>
+            <label className="screening-row screening-none-row">
+              <span><strong>以上情况均不符合我</strong><small>我目前没有上述情况，且没有需要补充说明的安全风险。</small></span>
+              <input type="checkbox" aria-label="以上情况均不符合我" checked={noRiskConfirmed} onChange={(e) => { setNoRiskConfirmed(e.target.checked); if (e.target.checked) setAnswers(EMPTY_SCREENING); setScreeningValidation(null); }} />
+            </label>
+            </div>
           {screeningRequired && (
             <div className="notice notice-warning" role="status"><AlertTriangle size={17} />档案已更新，请提交新的安全筛查</div>
           )}
-          {screening && !screeningRequired && (
+          {screeningReady && screening && !screeningRequired && (
             <div className={`screening-result screening-${screening.status.toLowerCase()}`} role="status">
               {screening.automaticPlanningAllowed ? <CheckCircle2 size={20} /> : <AlertTriangle size={20} />}
               <div><strong>{screening.automaticPlanningAllowed ? '可以进入自动计划' : '自动计划已暂停'}</strong><span>{screening.guidance}</span></div>
             </div>
           )}
+          {screening && !screeningReady && !screeningQuery.isError && (
+            <div className="notice notice-error" role="alert">安全状态数据格式异常，请刷新页面重试</div>
+          )}
           {screeningQuery.isError && !screeningMissing && <div className="notice notice-error" role="alert">安全状态读取失败</div>}
           {saveScreening.isError && <div className="notice notice-error" role="alert">{errorText(saveScreening.error)}</div>}
-          <div className="section-actions"><button className="button button-primary" disabled={saveScreening.isPending}>{saveScreening.isPending ? '正在提交' : screening ? '重新提交筛查' : '提交筛查'}</button></div>
+          {screeningValidation && <div className="notice notice-warning" role="alert"><AlertTriangle size={17} />{screeningValidation}</div>}
+          <div className="section-actions"><button className="button button-primary" disabled={saveScreening.isPending || (!noRiskConfirmed && !Object.values(answers).some(Boolean))}>{saveScreening.isPending ? '正在提交' : screening ? '重新提交筛查' : '提交筛查'}</button></div>
         </form>
       )}
     </main>

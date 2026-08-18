@@ -202,6 +202,12 @@ export interface CoachStreamInput {
   message: string;
 }
 
+export interface CoachCapabilities {
+  available: boolean;
+  mode: 'OFFLINE' | 'LOCAL' | 'MINIMAX';
+  message: string;
+}
+
 export type CoachStreamEvent =
   | { type: 'metadata'; conversationId: string; scene: CoachScene }
   | { type: 'token'; sequence: number; text: string }

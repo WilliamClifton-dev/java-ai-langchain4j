@@ -169,6 +169,7 @@ The committed OpenAPI drift baseline is
 | `/api/v1/tracking` | daily metric, nutrition, training and day summary |
 | `/api/v1/tracking/weekly-reviews` | create and read weekly review |
 | `/api/v1/coach/messages` | synchronous message and SSE stream |
+| `/api/v1/coach/capabilities` | authenticated model availability check for the web composer |
 
 API details live in `docs/api/`. Ownership is never accepted from request bodies.
 Cookie-authenticated writes require CSRF. Browser auth cookies remain HTTP-only and

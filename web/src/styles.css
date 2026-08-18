@@ -1112,6 +1112,103 @@ a {
   margin-top: 24px;
 }
 
+.plan-next-links,
+.plan-blocked-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.plan-next-links {
+  justify-content: flex-end;
+}
+
+.coach-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
+  gap: 24px;
+}
+
+.coach-composer,
+.coach-response,
+.coach-offline {
+  min-width: 0;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.coach-composer {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.coach-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.coach-response header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.coach-response header h2,
+.coach-offline h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.coach-response header span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.coach-empty,
+.coach-answer {
+  min-height: 180px;
+  margin: 20px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.coach-answer {
+  color: var(--ink);
+}
+
+.coach-offline {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  color: #694d24;
+  background: #fff7e8;
+  border-left: 3px solid var(--ochre);
+}
+
+.coach-offline p {
+  max-width: 58rem;
+  margin: 9px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.coach-offline-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
 .plan-builder-actions {
   gap: 10px;
 }
@@ -1293,6 +1390,10 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .coach-layout {
+    grid-template-columns: 1fr;
+  }
+
 }
 
 @media (max-width: 480px) {
@@ -1376,6 +1477,22 @@ a {
   .plan-builder-actions {
     align-items: stretch;
     flex-direction: column-reverse;
+  }
+
+  .plan-actions,
+  .plan-next-links,
+  .plan-blocked-links,
+  .coach-offline-links {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .plan-actions .button,
+  .plan-next-links .button,
+  .plan-blocked-links a,
+  .coach-offline-links .button {
+    width: 100%;
+    text-align: center;
   }
 
 }

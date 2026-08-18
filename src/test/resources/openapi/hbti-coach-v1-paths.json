@@ -8,6 +8,7 @@
   "/api/v1/auth/refresh": ["post"],
   "/api/v1/auth/logout": ["post"],
   "/api/v1/coach/messages": ["post"],
+  "/api/v1/coach/capabilities": ["get"],
   "/api/v1/coach/messages/stream": ["post"],
   "/api/v1/assessments/hbti/definitions/{version}": ["get"],
   "/api/v1/assessments/hbti/submissions": ["post"],

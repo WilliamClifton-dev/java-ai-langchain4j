@@ -127,6 +127,44 @@ describe('account experience', () => {
     ]);
   });
 
+  it('requires an explicit no-risk confirmation before submitting an empty safety screen', async () => {
+    window.history.replaceState({}, '', '/profile');
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path === '/api/v1/auth/session') return Promise.resolve(jsonResponse(session));
+      if (path === '/api/v1/profile') return Promise.resolve(jsonResponse({
+        userId: 'account-123', dateOfBirth: '1990-01-01', calculationSex: 'FEMALE',
+        heightCm: 165, currentWeightKg: 70, targetWeightKg: 60, activityLevel: 'MODERATE', timeZone: 'Asia/Hong_Kong',
+      }));
+      if (path === '/api/v1/profile/screenings/current') return Promise.resolve(jsonResponse({ error: { code: 'PROFILE_NOT_FOUND', message: 'Profile was not found', details: {} } }, 404));
+      if (path === '/api/v1/auth/csrf') return Promise.resolve(jsonResponse({ headerName: 'X-XSRF-TOKEN', token: 'csrf-value' }));
+      if (path === '/api/v1/profile/screenings') return Promise.resolve(jsonResponse({
+        id: 'screen-1', version: 1, status: 'ELIGIBLE', automaticPlanningAllowed: true,
+        reasonCodes: [], guidance: 'Eligible.', createdAt: '2026-08-16T12:00:00Z',
+      }, 201));
+      return Promise.reject(new Error(`unexpected request ${init?.method ?? 'GET'} ${path}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: '个人档案与安全筛查' })).toBeInTheDocument();
+    expect(await screen.findByText('请明确确认“以上情况均不符合我”，或选择至少一项需要关注的情况')).toBeInTheDocument();
+    const submit = screen.getByRole('button', { name: '提交筛查' });
+    expect(submit).toBeDisabled();
+    expect(fetchMock.mock.calls.some((call) => call[0] === '/api/v1/profile/screenings')).toBe(false);
+
+    await user.click(screen.getByRole('checkbox', { name: '以上情况均不符合我' }));
+    expect(submit).toBeEnabled();
+    await user.click(submit);
+    await screen.findByText('可以进入自动计划');
+    const request = fetchMock.mock.calls.find((call) => call[0] === '/api/v1/profile/screenings');
+    expect(JSON.parse(request?.[1]?.body as string)).toEqual({
+      pregnantOrBreastfeeding: false, eatingDisorderHistory: false,
+      medicalGuidanceRequired: false, weightAffectingMedication: false, concerningSymptoms: false,
+    });
+  });
+
   it('walks through the HBTI questionnaire and submits all answers once', async () => {
     window.history.replaceState({}, '', '/assessment');
     const items = Array.from({ length: 16 }, (_, index) => ({
@@ -205,13 +243,13 @@ describe('account experience', () => {
     const user = userEvent.setup();
     render(<App />);
     expect(await screen.findByRole('heading', { name: '体重管理计划' })).toBeInTheDocument();
-    await user.click(screen.getByRole('radio', { name: '温和减重' }));
+    await user.click(screen.getByRole('radio', { name: '减脂 / 减重' }));
     await user.click(screen.getByRole('button', { name: '生成计划草稿' }));
     expect(await screen.findByText('草稿')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '校验计划' }));
-    await user.click(await screen.findByRole('button', { name: '确认计划' }));
-    await user.click(await screen.findByRole('button', { name: '启用计划' }));
+    await user.click(screen.getByRole('button', { name: '确认并启用计划' }));
     expect(await screen.findByText('当前计划已启用')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '记录今天' })).toHaveAttribute('href', '/tracking');
+    expect(screen.getByRole('link', { name: '查看七日回顾' })).toHaveAttribute('href', '/review');
     expect(calls).toContain('POST /api/v1/plans/drafts');
     expect(calls).toContain('POST /api/v1/plans/plan-1/versions/version-1/validation');
     expect(calls).toContain('POST /api/v1/plans/plan-1/versions/version-1/confirmation');
@@ -276,7 +314,7 @@ describe('account experience', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(await screen.findByRole('button', { name: '制定新计划' }));
-    expect(screen.getByRole('radio', { name: '温和减重' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: '减脂 / 减重' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '生成计划草稿' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '返回当前计划' }));
     expect(await screen.findByText('当前计划已启用')).toBeInTheDocument();
@@ -383,6 +421,25 @@ describe('account experience', () => {
     }));
     expect(JSON.parse(streamCall?.[1]?.body as string)).not.toHaveProperty('owner');
     expect(JSON.parse(streamCall?.[1]?.body as string)).not.toHaveProperty('permissions');
+  });
+
+  it('explains offline coach mode and keeps the core workflow available', async () => {
+    window.history.replaceState({}, '', '/coach');
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path === '/api/v1/auth/session') return Promise.resolve(jsonResponse(session));
+      if (path === '/api/v1/coach/capabilities') return Promise.resolve(jsonResponse({ available: false, mode: 'OFFLINE', message: '当前环境未配置 AI 模型' }));
+      return Promise.reject(new Error(`unexpected request ${path}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: '智能教练暂不可用' })).toBeInTheDocument();
+    expect(screen.getByText(/档案、HBTI 测评、计划、每日记录和七日回顾仍然可以正常使用/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('你的问题')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '查看计划' })).toHaveAttribute('href', '/plan');
+    expect(screen.getByRole('link', { name: '记录今天' })).toHaveAttribute('href', '/tracking');
+    expect(screen.getByRole('link', { name: '查看七日回顾' })).toHaveAttribute('href', '/review');
   });
 
   it('lets the user cancel an in-flight coach response', async () => {
