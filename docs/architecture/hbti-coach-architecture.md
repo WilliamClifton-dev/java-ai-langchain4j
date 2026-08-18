@@ -45,6 +45,25 @@ availability SLO still requires real post-launch measurement, and public deploym
 still requires a platform attestation for TLS, managed secrets, off-host backups and
 alert delivery. Passing repository gates does not make the service enterprise/L2.
 
+## Code-To-Claim Index
+
+The following links are the final reconciliation between this document and the
+implementation. A future change that invalidates one of these owners must update the
+architecture and its tests in the same change.
+
+| Architectural claim | Code owner and evidence |
+|---|---|
+| Authentication and ownership | [`SecurityConfig`](../../src/main/java/com/atguigu/java/ai/langchain4j/identity/security/SecurityConfig.java), [`ProfileService`](../../src/main/java/com/atguigu/java/ai/langchain4j/profile/ProfileService.java) |
+| HBTI V1 scoring | [`HbtiScoringEngine`](../../src/main/java/com/atguigu/java/ai/langchain4j/assessment/HbtiScoringEngine.java), [`V4 migration`](../../src/main/resources/db/migration/V4__publish_hbti_definition_v1.sql) |
+| Deterministic planning | [`HealthCalculator`](../../src/main/java/com/atguigu/java/ai/langchain4j/planning/HealthCalculator.java), [`WeightPlanService`](../../src/main/java/com/atguigu/java/ai/langchain4j/planning/WeightPlanService.java) |
+| Tracking and weekly review | [`DailyTrackingService`](../../src/main/java/com/atguigu/java/ai/langchain4j/tracking/DailyTrackingService.java), [`WeeklyReviewPolicy`](../../src/main/java/com/atguigu/java/ai/langchain4j/tracking/WeeklyReviewPolicy.java) |
+| Authorized model tools | [`CoachToolContext`](../../src/main/java/com/atguigu/java/ai/langchain4j/coach/tool/CoachToolContext.java), [`CoachToolProvider`](../../src/main/java/com/atguigu/java/ai/langchain4j/coach/streaming/CoachToolProvider.java) |
+| Reviewed lexical RAG | [`KnowledgeIngestionService`](../../src/main/java/com/atguigu/java/ai/langchain4j/knowledge/KnowledgeIngestionService.java), [`ReviewedKnowledgeRetriever`](../../src/main/java/com/atguigu/java/ai/langchain4j/knowledge/ReviewedKnowledgeRetriever.java) |
+| Streaming resilience | [`CoachStreamingService`](../../src/main/java/com/atguigu/java/ai/langchain4j/coach/streaming/CoachStreamingService.java), [`ModelCircuitBreaker`](../../src/main/java/com/atguigu/java/ai/langchain4j/coach/streaming/ModelCircuitBreaker.java) |
+| Durable/ephemeral split | [`MySqlChatMemoryStore`](../../src/main/java/com/atguigu/java/ai/langchain4j/store/MySqlChatMemoryStore.java), [`RedisEphemeralStateStore`](../../src/main/java/com/atguigu/java/ai/langchain4j/infrastructure/redis/RedisEphemeralStateStore.java) |
+| Retention and observability | [`RetentionCleanupService`](../../src/main/java/com/atguigu/java/ai/langchain4j/common/retention/RetentionCleanupService.java), [`AuditEventService`](../../src/main/java/com/atguigu/java/ai/langchain4j/common/audit/AuditEventService.java) |
+| Delivery and release gates | [`docker-compose.yml`](../../docker-compose.yml), [`verify-release.ps1`](../../scripts/release/verify-release.ps1), [`release checklist`](../RELEASE_CHECKLIST.md) |
+
 ## Architecture Drivers
 
 1. User health-adjacent data requires explicit ownership, minimization, deletion, and auditability.

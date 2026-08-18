@@ -132,8 +132,11 @@ Model-enabled releases require exact provider/model evaluation and cost evidence
 - [ ] Publish application image digests and record the Flyway migration range; all
       external build/runtime image inputs are already source-pinned by digest.
 - [ ] Configure log/metric collection and actionable alerts.
-- [ ] Run current-commit Task 23 load, AI evaluation, restore and rollback exercises.
-- [ ] Record the release checklist and rollback command before public traffic.
+- [x] Run current-commit Task 23 load, AI evaluation, restore and rollback exercises;
+      evidence is retained under `target/release-evidence/` and the release gate
+      requires every report's `gitCommit` to match the candidate commit.
+- [x] Record the release checklist and rollback command before public traffic;
+      use [`docs/RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md) and the release runbook.
 
 `./scripts/release/verify-release.ps1 -Purpose PublicDeployment` requires a reviewed
 platform attestation for TLS, managed secrets, hourly encrypted off-host backups,

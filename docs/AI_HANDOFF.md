@@ -46,9 +46,10 @@ source of truth; Redis stores only bounded ephemeral/reconstructable data. Defau
 tests must not require an external database, Redis or model provider. Never log or
 commit credentials, tokens, health facts, assessment answers, prompts or model content.
 
-Current priority: complete Task 24 final reconciliation and handoff. Tasks 19 through
-23 are complete. Keep architecture, ADRs, API docs, learning docs and evidence
-synchronized with behavior.
+Current priority: re-verify the completed 24-task baseline from the current commit.
+Tasks 1 through 24 are implemented; keep architecture, ADRs, API docs, learning docs
+and evidence synchronized with behavior. Do not claim enterprise/L2 or regulated-health
+readiness.
 ```
 
 ## 2. Product Definition
@@ -129,7 +130,7 @@ Key persistence rules:
 
 ## 5. Implemented And Verified
 
-Tasks 1-22 are recorded complete. The platform currently implements:
+Tasks 1-24 are recorded complete. The platform currently implements:
 
 - MySQL/MyBatis/Flyway persistence and H2-compatible default tests;
 - BCrypt credentials, signed access JWTs, rotating opaque refresh tokens and CSRF;
@@ -231,21 +232,26 @@ Status: **complete**. Versioned AI/RAG evaluation, public-API demo data, retenti
 operator runbooks, load, fresh-volume restore, rollback and machine-readable release
 gates are implemented. The full three-phase load observed 20 concurrent sessions,
 20 RPS for 60 seconds and 100 RPS for 10 seconds with zero errors or dropped
-iterations; p95 was 9.64 ms interactive, 5.47 ms sustained and 4.20 ms burst. Restore
-compared 21 durable tables on a fresh pinned MySQL image in 26.398 seconds with no
-count differences or retained dump. Invalid candidate configuration was rejected
-before cutover and known-good readiness recovered.
+iterations, zero errors and zero dropped iterations. Restore compares 21 durable
+tables on a fresh pinned MySQL image with no count differences or retained dump.
+Invalid candidate configuration is rejected before cutover and known-good readiness
+must recover. The release gate requires seven AI safety cases, 500 RAG candidates,
+zero OSV/npm findings and every report's `gitCommit` to match the candidate commit.
+Read exact timings and hashes from `target/release-evidence/release-manifest.json`.
 
 ### Task 24: Final Handoff
 
-Status: **pending**. Reconcile every architecture claim and link it to real code,
-complete module learning notes and interview questions, check links, review the full
-branch diff and run every final gate.
+Status: **complete**. The architecture now has a code-to-claim index, the learning
+guide has real source links, migration coverage, implementation patterns, exercises
+and interview questions, and the Markdown link checker passed. `tasks/todo.md`, the
+deployment checklist and this handoff agree that Tasks 1-24 are complete. The final
+verification and commit are recorded in the durable execution ledger.
 
 ## 8. Recommended Execution Order
 
 1. Reconcile Git status and the durable ledger before editing.
-2. Complete Task 24 documentation/review and only then run the global completion audit.
+2. Run the link checker and `scripts/release/verify-release.ps1` for the current commit.
+3. Read `docs/LEARNING.md` before changing a module or extending the product.
 
 ## 9. Verification Commands
 
