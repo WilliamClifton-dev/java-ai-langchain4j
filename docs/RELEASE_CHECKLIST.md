@@ -42,6 +42,8 @@ compliance.
       `src/test/resources/openapi/hbti-coach-v1-paths.json` baseline. The
       springdoc-generated `/v3/api-docs` output is checked into the build.
 - [ ] `OpenApiContractTest#schemaFieldShapesMatchTheCommittedBaseline` asserts every `components.schemas` property name and `required` array against `src/test/resources/openapi/hbti-coach-v1-schemas.json`. Regenerate the baseline only after a deliberate schema change.
+- [ ] `CoachAgentWiringContractTest` proves every bean name referenced by the `@AiService` annotation on `HbtiCoachAgent` resolves to a bean under the test profile. Renaming `chatModel`, `reviewedKnowledgeRetriever` or `coachTools` without updating the bean definition must fail here, not at the first coach request.
+- [ ] `CoachAgentPromptVariablesContractTest` keeps the `@V("current_date")` and `@V("scene_rules")` parameters in sync with the `{{current_date}}` and `{{scene_rules}}` placeholders inside `prompts/hbti/core.txt`. A drift surfaces at compile time of the test suite instead of the first model round-trip.
 - [ ] HbtiPromptSnapshotTest matches the committed
       `src/test/resources/fixtures/hbti-prompt-baseline.json` baseline. Provider
       switches between `offline`, `local` and `minimax` must not silently rewrite
