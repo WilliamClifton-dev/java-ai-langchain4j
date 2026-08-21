@@ -144,6 +144,7 @@ Tasks 1-24 are recorded complete. The platform currently implements:
 - shared Redis rate limits, leases and public-definition cache with explicit outages;
 - correlated JSON logs, audit events, bounded metrics, liveness and readiness;
 - account data export/deletion and immediate active-account JWT validation;
+- ADR-016 application-layer fail-fast refuses to boot when the well-known dev signing key is reused under a production-grade profile (see src/main/java/com/atguigu/java/ai/langchain4j/identity/AuthSigningKeyEnvironmentPostProcessor.java);
 - OpenAPI 1.0.0 path/method baseline, explicit CORS and security-header tests.
 
 Latest Task 18 targeted verification:

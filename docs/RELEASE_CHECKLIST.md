@@ -26,6 +26,26 @@ compliance.
 - [ ] Release commit, image digests, Flyway range, Prompt hash, evaluation hash,
       operator and rollback command are attached to the release record.
 
+## Application-Layer Security Contracts
+
+- [ ] `AuthSigningKeyStartupGuardTest` refuses to boot under the `minimax` profile
+      when `hbti.auth.signing-key` is the well-known development value shipped in
+      `docker-compose.yml`. The same operator-supplied secret boots cleanly under
+      every other profile.
+- [ ] `AuthSigningKeyValidatorTest` covers the three branches: dev key rejected
+      under production-grade profiles, dev key accepted under
+      `offline` / `local` / `test`, and custom keys accepted unconditionally.
+
+## Contract Tests
+
+- [ ] `OpenApiContractTest` matches the committed
+      `src/test/resources/openapi/hbti-coach-v1-paths.json` baseline. The
+      springdoc-generated `/v3/api-docs` output is checked into the build.
+- [ ] `HbtiPromptSnapshotTest` matches the committed
+      `src/test/resources/fixtures/hbti-prompt-baseline.json` baseline. Provider
+      switches between `offline`, `local` and `minimax` must not silently rewrite
+      prompt text.
+
 Offline mode is a valid public-beta release when all deterministic gates pass. It must
 present coaching as unavailable. Model-enabled release is blocked without provider
 evaluation and cost evidence, even when offline tests pass.

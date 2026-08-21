@@ -14,6 +14,8 @@ HBTI Coach is a Spring Boot 3.2.6 + LangChain4j 1.0.0-beta3 personal weight mana
 
 ```bash
 # Run all tests (uses H2, no external dependencies)
+
+**Note:** the test profile expects AUTH_SIGNING_KEY to be set in the shell environment. Any 32+ byte secret works (for example aseline-test-key-padded-to-32-bytes); the well-known dev key shipped in docker-compose.yml is also accepted because the test profile is in the allow-list. Without an AUTH_SIGNING_KEY the @WebMvcTest slice tests cannot resolve the hbti.auth.signing-key placeholder and mvn test fails.
 mvn test
 
 # Run a specific test class

@@ -46,6 +46,10 @@ Web 关键流程、容器交付和 Task 23 发布证据已经实现。账户数�
 
 浏览器入口是 `http://localhost:5173/`。默认 `offline` Profile 会让教练调用明确失败，但不会影响账户、测评、计划、记录和复盘。详细配置和清理命令见 [部署指南](docs/DEPLOYMENT.md)。
 
+
+
+> **本地运行与测试都需要 AUTH_SIGNING_KEY 环境变量。** 该变量至少 32 字节，且不能是 docker-compose.yml 中固定的开发默认值（除非当前 profile 是 offline / local / 	est）。部署前请按 ADR-016 注入平台密钥。
+
 完整离线 L1 发布证据：
 
 ```powershell
