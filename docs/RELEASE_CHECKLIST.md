@@ -41,7 +41,8 @@ compliance.
 - [ ] `OpenApiContractTest` matches the committed
       `src/test/resources/openapi/hbti-coach-v1-paths.json` baseline. The
       springdoc-generated `/v3/api-docs` output is checked into the build.
-- [ ] `HbtiPromptSnapshotTest` matches the committed
+- [ ] `OpenApiContractTest#schemaFieldShapesMatchTheCommittedBaseline` asserts every `components.schemas` property name and `required` array against `src/test/resources/openapi/hbti-coach-v1-schemas.json`. Regenerate the baseline only after a deliberate schema change.
+- [ ] HbtiPromptSnapshotTest matches the committed
       `src/test/resources/fixtures/hbti-prompt-baseline.json` baseline. Provider
       switches between `offline`, `local` and `minimax` must not silently rewrite
       prompt text.
