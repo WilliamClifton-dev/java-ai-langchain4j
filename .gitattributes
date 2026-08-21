@@ -1,0 +1,34 @@
+# Normalise line endings to LF so windows checkouts do not rewrite text
+# assets on every commit. Binary assets stay untouched.
+* text=auto eol=lf
+
+# Documentation, prompts, fixtures and configuration must never carry CRLF.
+*.md     text eol=lf
+*.txt    text eol=lf
+*.json   text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.xml    text eol=lf
+*.sql    text eol=lf
+*.csv    text eol=lf
+
+# Source code stays LF as well.
+*.java   text eol=lf
+*.kt     text eol=lf
+*.ts     text eol=lf
+*.tsx    text eol=lf
+*.js     text eol=lf
+*.cjs    text eol=lf
+*.mjs    text eol=lf
+
+# Shell scripts and Windows batch stay as written so CRLF in .bat / .ps1 is
+# preserved by design.
+*.sh     text eol=lf
+*.ps1    text eol=lf
+*.bat    text eol=lf
+*.cmd    text eol=lf
+
+# Maven wrapper jar is a binary even though the filter above matches it.
+.gitattributes             text eol=lf
+.gitignore                 text eol=lf
+.gitkeep                   text eol=lf
