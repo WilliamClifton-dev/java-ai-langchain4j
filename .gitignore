@@ -60,6 +60,9 @@ hs_err_pid*
 *.pem
 *.key
 
+# Temporary build artefacts and local scratch space
+tmp/
+
 # Local Codex execution ledger
 .codex/plan-runs/
 
