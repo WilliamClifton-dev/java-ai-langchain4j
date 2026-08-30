@@ -15,6 +15,9 @@ const sustainedDuration = __ENV.SUSTAINED_DURATION || '60s';
 const burstRate = Number(__ENV.BURST_RPS || 100);
 const burstDuration = __ENV.BURST_DURATION || '10s';
 const sustainedSeconds = Number(__ENV.SUSTAINED_SECONDS || 60);
+// Keep headroom for arrival-rate scheduling so the generator does not become
+// the bottleneck when a response briefly exceeds one second.
+const burstVus = Math.max(200, burstRate * 2);
 
 const sustainedDurationMetric = new Trend('hbti_sustained_duration', true);
 const burstDurationMetric = new Trend('hbti_burst_duration', true);
@@ -51,8 +54,8 @@ export const options = {
       rate: burstRate,
       timeUnit: '1s',
       duration: burstDuration,
-      preAllocatedVUs: 20,
-      maxVUs: 20,
+      preAllocatedVUs: burstVus,
+      maxVUs: burstVus,
       gracefulStop: '5s',
     },
   },
@@ -95,6 +98,26 @@ function mutation(method, path, body, jar, csrfContract, tags = {}) {
   });
 }
 
+function snapshotSessionCookies(jar) {
+  const cookies = jar.cookiesForURL(`${baseUrl}/api/v1/auth/session`);
+  const sessionCookies = {};
+  for (const [name, values] of Object.entries(cookies)) {
+    const cookie = Array.isArray(values) ? values[0] : values;
+    const value = typeof cookie === 'string' ? cookie : cookie.value;
+    if (value) {
+      sessionCookies[name] = value;
+    }
+  }
+  return sessionCookies;
+}
+
+function restoreSessionCookies(jar, cookies) {
+  for (const [name, value] of Object.entries(cookies)) {
+    const cookieUrl = name === 'HBTI_ACCESS' ? baseUrl : `${baseUrl}/api/v1/auth`;
+    jar.set(cookieUrl, name, value);
+  }
+}
+
 export function setup() {
   if (!password || password.length < 12) {
     fail('LOAD_PASSWORD must be supplied by the runner and contain at least 12 characters.');
@@ -119,7 +142,7 @@ export function setup() {
     if (profile.status !== 200) {
       fail(`Profile setup failed for index ${index} with ${profile.status}`);
     }
-    accounts.push(email);
+    accounts.push({ email, cookies: snapshotSessionCookies(jar) });
   }
   jar.clear(baseUrl);
   return { accounts };
@@ -129,17 +152,19 @@ let authenticatedEmail;
 
 function ensureAuthenticated(data) {
   const index = (__VU - 1) % data.accounts.length;
-  const email = data.accounts[index];
+  const account = data.accounts[index];
+  const email = account.email;
   if (authenticatedEmail === email) {
     return;
   }
   const jar = http.cookieJar();
-  const token = csrf(jar);
-  const login = mutation('POST', '/api/v1/auth/login', { email, password }, jar, token, {
-    name: 'warmup_login',
+  restoreSessionCookies(jar, account.cookies);
+  const session = http.get(`${baseUrl}/api/v1/auth/session`, {
+    jar,
+    tags: { name: 'warmup_session' },
   });
-  if (login.status !== 200) {
-    fail(`VU login failed with ${login.status}`);
+  if (session.status !== 200) {
+    fail(`VU session bootstrap failed with ${session.status}`);
   }
   authenticatedEmail = email;
 }
@@ -186,15 +211,10 @@ export function interactiveTraffic(data) {
 
 export function teardown(data) {
   const jar = http.cookieJar();
-  for (const email of data.accounts) {
+  for (const account of data.accounts) {
     jar.clear(baseUrl);
+    restoreSessionCookies(jar, account.cookies);
     const token = csrf(jar);
-    const login = mutation('POST', '/api/v1/auth/login', { email, password }, jar, token, {
-      name: 'teardown_login',
-    });
-    if (login.status !== 200) {
-      continue;
-    }
     mutation('DELETE', '/api/v1/account', { confirmation: 'DELETE_MY_ACCOUNT' }, jar, token, {
       name: 'teardown_delete',
     });
