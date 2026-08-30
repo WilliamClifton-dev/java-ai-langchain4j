@@ -21,8 +21,7 @@
 *.cjs    text eol=lf
 *.mjs    text eol=lf
 
-# Shell scripts and Windows batch stay as written so CRLF in .bat / .ps1 is
-# preserved by design.
+# Shell scripts and Windows batch files also use LF for consistent checkouts.
 *.sh     text eol=lf
 *.ps1    text eol=lf
 *.bat    text eol=lf

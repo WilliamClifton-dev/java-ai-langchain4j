@@ -48,7 +48,7 @@ Web 关键流程、容器交付和 Task 23 发布证据已经实现。账户数�
 
 
 
-> **本地运行与测试都需要 AUTH_SIGNING_KEY 环境变量。** 该变量至少 32 字节，且不能是 docker-compose.yml 中固定的开发默认值（除非当前 profile 是 offline / local / 	est）。部署前请按 ADR-016 注入平台密钥。
+> **本地运行与测试都需要 AUTH_SIGNING_KEY 环境变量。** 该变量至少 32 字节，且不能是 docker-compose.yml 中固定的开发默认值（除非当前 profile 是 offline / local / test）。部署前请按 ADR-016 注入平台密钥。
 
 完整离线 L1 发布证据：
 

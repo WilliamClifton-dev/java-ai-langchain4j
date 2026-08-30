@@ -1,17 +1,18 @@
 ## Overview
 
 Promote `codex/hbti-platform` to `main` so the 24-task public-beta worktree
-lands on the default branch. The PR also introduces 13 new hardening commits
+lands on the default branch. The PR also introduces 14 new hardening commits
 on top of that base.
 
 This branch and `main` share no common ancestor in the local clone, so the
-GitHub PR diff is the **full branch vs `main`**: **474 files,
-+30054 / -418**. The 13 new commits below add **19 files, +1081 / -5** of
+GitHub PR diff is the **full branch vs `main`**: **476 files,
++30233 / -418**. The 14 new commits below add **23 files, +1302 / -5** of
 net change.
 
-## Headline: 13 new hardening commits
+## Headline: 14 new hardening commits
 
 ```
+a3cfb8c docs(pr): capture PR #1 description and review notes on the branch
 ebab3da chore(repo): lock LF line endings via .gitattributes
 7d67aa9 chore(repo): ignore local tmp scratch directory
 7872754 docs(release): add agent wiring and prompt variable contracts to L1 checklist
@@ -27,7 +28,7 @@ c33c50d feat(identity): fail-fast when default dev signing key used under prod
 d8b6771 docs(adr): reject default auth signing key outside dev profiles
 ```
 
-### New files (13)
+### New files (16)
 
 - `docs/decisions/ADR-016-reject-default-auth-signing-key-outside-dev-profiles.md`
 - `src/main/java/.../identity/AuthSigningKeyDefaults.java`
@@ -43,11 +44,13 @@ d8b6771 docs(adr): reject default auth signing key outside dev profiles
 - `src/test/resources/fixtures/hbti-prompt-baseline.json`
 - `src/test/resources/openapi/hbti-coach-v1-schemas.json`
 - `.gitattributes`
+- `docs/PR1_DESCRIPTION.md`
+- `docs/PR1_REVIEW_NOTES.md`
 
-### Modified files (6)
+### Modified files (7)
 
 `CLAUDE.md`, `README.md`, `docs/AI_HANDOFF.md`, `docs/RELEASE_CHECKLIST.md`,
-`.github/workflows/ci.yml`, `.gitignore`
+`.github/workflows/ci.yml`, `.gitignore`, `src/test/java/.../config/OpenApiContractTest.java`
 
 ### Contract guard rails added in this PR
 
@@ -55,7 +58,7 @@ d8b6771 docs(adr): reject default auth signing key outside dev profiles
 |---|---|---|
 | 1 | ADR-016 EnvironmentPostProcessor | Dev signing key reused under `minimax` profile refuses to boot |
 | 2 | `HbtiPromptSnapshotTest` | SHA-256 LF-normalized baseline of `core.txt` + 6 scene prompts |
-| 3 | `OpenApiContractTest#schemaFieldShapesMatchTheCommittedBaseline` | 49 application DTO property + required arrays |
+| 3 | `OpenApiContractTest#schemaFieldShapesMatchTheCommittedBaseline` | 53 application DTO property + required arrays |
 | 4 | `CoachAgentWiringContractTest` + `CoachAgentPromptVariablesContractTest` | `@AiService` bean references resolve; `@V` parameters stay in sync with `{{...}}` placeholders |
 
 ### Tests

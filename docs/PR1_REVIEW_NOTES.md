@@ -1,11 +1,12 @@
 # PR #1 Review Notes
 
 Companion to `PR1_DESCRIPTION.md`. This file gives the reviewer a compact
-entry point for verifying the 13 hardening commits.
+entry point for verifying the 14 hardening commits.
 
-## 1. Headline commits (13, newest first)
+## 1. Headline commits (14, newest first)
 
 ```
+a3cfb8c docs(pr): capture PR #1 description and review notes on the branch
 ebab3da chore(repo): lock LF line endings via .gitattributes
 7d67aa9 chore(repo): ignore local tmp scratch directory
 7872754 docs(release): add agent wiring and prompt variable contracts to L1 checklist
