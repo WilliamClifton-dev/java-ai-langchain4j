@@ -1,0 +1,26 @@
+# HBTI Coach Execution Checklist
+
+- [x] Task 1: Architecture baseline and durable execution ledger
+- [x] Task 2: MySQL build and migration foundation
+- [x] Task 3: MySQL chat memory vertical slice
+- [x] Task 4: Identity schema and credential domain
+- [x] Task 5: Authentication API and security filter chain
+- [x] Task 6: Profile ownership and safety screening
+- [x] Task 7: Versioned HBTI definition import and scoring engine
+- [x] Task 8: HBTI assessment API and result history
+- [x] Task 9: Deterministic health calculators
+- [x] Task 10: Versioned plan lifecycle
+- [x] Task 11: Daily tracking records
+- [x] Task 12: Weekly deterministic review
+- [x] Task 13: Authorized coach tools
+- [x] Task 14: Knowledge ingestion and RAG
+- [x] Task 15: Streaming and model resilience
+- [x] Task 16: Redis rate, idempotency and cache controls
+- [x] Task 17: Observability and audit trail
+- [x] Task 18: OpenAPI and security hardening
+- [x] Task 19: Web foundation and authentication flow
+- [x] Task 20: Web assessment, profile and plan flow
+- [x] Task 21: Web tracking, review and coach flow
+- [x] Task 22: CI, Docker and environment delivery
+- [x] Task 23: Evaluation, load, backup and rollback gates
+- [x] Task 24: Final architecture and learning handoff

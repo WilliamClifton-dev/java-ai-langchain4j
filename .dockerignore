@@ -1,0 +1,15 @@
+.git
+.github
+.idea
+.codex
+.claude
+target
+tmp
+web
+docs
+tasks
+*.pdf
+*.log
+.env
+.env.*
+!.env.example

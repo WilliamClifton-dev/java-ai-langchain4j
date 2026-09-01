@@ -1,0 +1,1 @@
+org.springframework.boot.env.EnvironmentPostProcessor=com.atguigu.java.ai.langchain4j.identity.AuthSigningKeyEnvironmentPostProcessor

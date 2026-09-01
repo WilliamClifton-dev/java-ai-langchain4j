@@ -52,3 +52,24 @@ Thumbs.db
 hs_err_pid*
 *.jfr
 *.pdf
+
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Temporary build artefacts and local scratch space
+tmp/
+
+# Local Codex execution ledger
+.codex/plan-runs/
+
+# Frontend build and dependency output
+web/node_modules/
+web/dist/
+web/coverage/
+web/*.tsbuildinfo
+web/vite.config.js
+web/vite.config.d.ts

@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main, codex/**]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend quality gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: maven
+
+      - name: Run backend tests
+        run: mvn --batch-mode --no-transfer-progress clean test
+        env:
+          AUTH_SIGNING_KEY: ci-only-signing-key-padded-to-32-bytes-min
+
+      - name: Run offline AI and RAG evaluation
+        shell: pwsh
+        run: ./scripts/evaluation/run-ai-safety-evaluation.ps1 -DeploymentMode Offline
+
+      - name: Build backend package
+        run: mvn --batch-mode --no-transfer-progress -DskipTests package
+
+      - name: Audit backend runtime dependencies
+        shell: pwsh
+        run: ./scripts/security/osv-audit.ps1 -FailOn HIGH
+
+      - name: Upload backend package
+        uses: actions/upload-artifact@v4
+        with:
+          name: hbti-coach-jar
+          path: target/*.jar
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload backend dependency audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dependency-audit
+          path: target/security/osv-report.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload offline AI evaluation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: offline-ai-evaluation
+          path: target/release-evidence/ai-safety/
+          if-no-files-found: warn
+          retention-days: 14
+
+  frontend:
+    name: Frontend quality gates
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frozen frontend dependencies
+        run: npm ci
+
+      - name: Run frontend tests
+        run: npm test
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Audit frontend dependencies
+        run: npm audit --audit-level=high
+
+      - name: Upload frontend bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: hbti-coach-web
+          path: web/dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  compose-smoke:
+    name: Compose runtime smoke
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+
+      - name: Build and assert the Compose runtime
+        shell: pwsh
+        run: ./scripts/smoke/compose-smoke.ps1 -TimeoutSeconds 300
+
+      - name: Upload Compose smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compose-smoke-evidence
+          path: target/compose-smoke/
+          if-no-files-found: warn
+          retention-days: 14

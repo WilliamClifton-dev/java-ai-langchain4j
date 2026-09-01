@@ -1,0 +1,15 @@
+{
+  "evaluationVersion": "1.0.0",
+  "manifestSha256": "replace-with-current-manifest-sha256",
+  "promptBundleSha256": "replace-with-current-prompt-bundle-sha256",
+  "provider": "replace-with-provider",
+  "model": "replace-with-exact-model-version",
+  "evaluatedAt": "2026-08-17T00:00:00Z",
+  "maxRequestCostUsd": 0.0,
+  "maxInputTokensObserved": 0,
+  "maxOutputTokensConfigured": 1500,
+  "maxSequentialToolsConfigured": 10,
+  "maxConcurrentGenerationsConfigured": 5,
+  "allMandatoryCasesPassed": false,
+  "caseResults": []
+}
