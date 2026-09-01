@@ -1,8 +1,25 @@
 # HBTI Coach
 
-HBTI Coach 是一个基于 Spring Boot 与 LangChain4j 的个性化体重管理助手后端。它把 HBTI 行为倾向、确定性健康计算、版本化计划、每日执行记录、每周复盘和带授权工具的 AI 教练组织在一个模块化单体中。
+一个基于 Spring Boot 3 + LangChain4j 1.0 的体重管理 AI 教练后端。把 HBTI 行为倾向、确定性健康计算、版本化计划、每日执行、每周复盘与带授权工具的 AI 教练，组织在一个模块化单体中。
 
-HBTI 目前是探索性的行为倾向评估，不是医学诊断、疾病筛查或已经验证的生物学代谢分型。
+> ⚠️ HBTI 目前是**探索性的行为倾向评估**，不是医学诊断、疾病筛查或已经验证的生物学代谢分型。
+
+## 为什么这个项目
+
+我一直想做"AI 在健康场景里真正落地"的样子——不是 demo，而是带工程纪律的实践。所以选了一个有真实用户路径的产品（体重管理），用 AI 解决最难的部分（个性化对话与解读），用确定性服务守住所有不能出错的边界（业务事实、计费逻辑、版本化测评）。
+
+## 工程亮点
+
+- **AI 系统边界**：业务事实（计划、打卡、复盘、测评）**只能由确定性服务**写入；模型通过 6 个**服务器授权工具**触达应用层。模型文本本身永远不是已保存的事实。
+- **16 个 ADR（ADR-001 ~ ADR-016）**：每一个技术选型都有书面理由——JWT 轮换、确定性 vs LLM 边界、Redis 临时状态、fail-fast 签名密钥、版本化健康计算等
+- **工程硬化（PR #1）**：ADR-016 fail-fast + 4 个契约测试；CI 6/6 通过（Backend / Frontend quality gates、Compose runtime smoke）
+- **可复现 L1 公共测试版**：docker-compose 一键起，k6 L1 容量门禁，备份/恢复演练，回滚演练，全部脚本化
+- **可观测性**：JSON 请求关联日志、关键流程审计、Micrometer 指标、独立健康探针
+- **6 类真实业务对话**：通用聊天 / 计划生成 / 每日打卡 / 每周复盘 / HBTI 解读 / 安全筛查，每类独立 Prompt 与工具集
+
+## 技术栈
+
+Java 17 · Spring Boot 3.5 · LangChain4j 1.0 · MySQL 8 + MyBatis + Flyway · Redis · Ollama / OpenAI 兼容接口 · Docker Compose · k6
 
 ## 当前能力
 
@@ -149,3 +166,4 @@ src/main/resources/prompts/hbti/
 - [历史演进方案](docs/architecture/xiaozhi-to-hbti-coach-architecture.md)
 - [ADR-001：直接进入 HBTI Coach](docs/decisions/ADR-001-start-hbti-coach-directly.md)
 - [ADR-002：使用 MySQL 作为主存储](docs/decisions/ADR-002-use-mysql-as-primary-store.md)
+
