@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -37,7 +38,11 @@ public class SecurityErrorWriter implements AuthenticationEntryPoint, AccessDeni
             HttpServletResponse response,
             org.springframework.security.access.AccessDeniedException exception
     ) throws IOException {
-        write(response, HttpServletResponse.SC_FORBIDDEN, "FORBIDDEN", "Access is forbidden");
+        if (exception instanceof CsrfException) {
+            write(response, HttpServletResponse.SC_FORBIDDEN, "INVALID_CSRF_TOKEN", "CSRF token is invalid");
+        } else {
+            write(response, HttpServletResponse.SC_FORBIDDEN, "FORBIDDEN", "Access is forbidden");
+        }
     }
 
     private void write(HttpServletResponse response, int status, String code, String message) throws IOException {

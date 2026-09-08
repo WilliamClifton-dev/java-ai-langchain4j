@@ -257,6 +257,6 @@ class AuthenticationApiTest {
                                 }
                                 """))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
+                .andExpect(jsonPath("$.error.code").value("INVALID_CSRF_TOKEN"));
     }
 }

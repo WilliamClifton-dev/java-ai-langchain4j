@@ -63,6 +63,77 @@ export class ApiError extends Error {
 }
 
 let csrfPromise: Promise<CsrfContract> | undefined;
+let refreshPromise: Promise<AuthSession> | undefined;
+let sessionGeneration = 0;
+let refreshVersion = 0;
+const sessionListeners = new Set<(session: AuthSession | null) => void>();
+
+export function subscribeSession(listener: (session: AuthSession | null) => void) {
+  sessionListeners.add(listener);
+  return () => { sessionListeners.delete(listener); };
+}
+
+function publishSession(session: AuthSession | null, identityChanged = false) {
+  if (identityChanged) sessionGeneration += 1;
+  sessionListeners.forEach((listener) => listener(session));
+}
+
+function refreshSession(): Promise<AuthSession> {
+  refreshPromise ??= mutate<AuthSession>('/api/v1/auth/refresh')
+    .then((session) => {
+      refreshVersion += 1;
+      publishSession(session);
+      return session;
+    })
+    .catch((error: unknown) => {
+      if (error instanceof ApiError && error.status === 401) publishSession(null, true);
+      throw error;
+    })
+    .finally(() => { refreshPromise = undefined; });
+  return refreshPromise;
+}
+
+async function fetchWithSession(path: string, init: RequestInit): Promise<Response> {
+  const generation = sessionGeneration;
+  const version = refreshVersion;
+  const response = await fetchWithCsrfRecovery(path, init);
+  if (response.status !== 401 || path.startsWith('/api/v1/auth/')) return response;
+  await response.body?.cancel();
+  if (generation !== sessionGeneration) throw new ApiError(401, 'SESSION_CHANGED', '登录账号已变化，请重新操作');
+  if (version === refreshVersion) await refreshSession();
+  if (generation !== sessionGeneration) throw new ApiError(401, 'SESSION_CHANGED', '登录账号已变化，请重新操作');
+  init.signal?.throwIfAborted();
+  const retried = await fetchWithCsrfRecovery(path, init);
+  if (retried.status === 401 && generation === sessionGeneration) publishSession(null, true);
+  return retried;
+}
+
+async function fetchWithCsrfRecovery(path: string, init: RequestInit): Promise<Response> {
+  const generation = sessionGeneration;
+  const response = await fetch(path, init);
+  if (response.status !== 403 || ['GET', 'HEAD', 'OPTIONS'].includes(init.method ?? 'GET')) return response;
+  const body = await parseBody(response.clone()) as ApiErrorEnvelope | undefined;
+  if (body?.error?.code !== 'INVALID_CSRF_TOKEN') return response;
+  await response.body?.cancel();
+  const stalePromise = csrfPromise;
+  const previous = await stalePromise;
+  if (csrfPromise === stalePromise && previous
+    && new Headers(init.headers).get(previous.headerName) === previous.token) csrfPromise = undefined;
+  const csrf = await csrfContract();
+  if (generation !== sessionGeneration) throw new ApiError(401, 'SESSION_CHANGED', '登录账号已变化，请重新操作');
+  init.signal?.throwIfAborted();
+  const headers = new Headers(init.headers);
+  headers.set(csrf.headerName, csrf.token);
+  return fetch(path, { ...init, headers });
+}
+
+async function authenticate(path: string, credentials: AuthCredentials) {
+  // Finish rotation before changing accounts so a late refresh cannot replace new cookies.
+  await refreshPromise?.catch(() => undefined);
+  const session = await mutate<AuthSession>(path, { body: JSON.stringify(credentials) });
+  publishSession(session, true);
+  return session;
+}
 
 async function parseBody(response: Response): Promise<unknown> {
   if (response.status === 204) {
@@ -84,7 +155,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(path, {
+  const response = await fetchWithSession(path, {
     ...init,
     headers,
     credentials: 'include',
@@ -175,7 +246,7 @@ async function streamCoach(
   signal?: AbortSignal,
 ) {
   const csrf = await csrfContract();
-  const response = await fetch('/api/v1/coach/messages/stream', {
+  const response = await fetchWithSession('/api/v1/coach/messages/stream', {
     method: 'POST',
     credentials: 'include',
     signal,
@@ -213,7 +284,8 @@ async function streamCoach(
     const data = lines.filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trimStart()).join('\n');
     if (!name || !data) return;
     const event = coachEvent(name, data);
-    if (terminal || (event.type === 'metadata' && hasMetadata) || (event.type !== 'metadata' && !hasMetadata)) {
+    if (terminal || (event.type === 'metadata' && hasMetadata)
+      || (event.type !== 'metadata' && event.type !== 'error' && !hasMetadata)) {
       throw new ApiError(502, 'INVALID_STREAM_ORDER', '教练消息事件顺序无效');
     }
     if (event.type === 'metadata') hasMetadata = true;
@@ -241,14 +313,14 @@ async function streamCoach(
 
 export const api = {
   getSession: () => request<AuthSession>('/api/v1/auth/session'),
-  register: (credentials: AuthCredentials) => mutate<AuthSession>('/api/v1/auth/register', {
-    body: JSON.stringify(credentials),
-  }),
-  login: (credentials: AuthCredentials) => mutate<AuthSession>('/api/v1/auth/login', {
-    body: JSON.stringify(credentials),
-  }),
-  refresh: () => mutate<AuthSession>('/api/v1/auth/refresh'),
-  logout: () => mutate<void>('/api/v1/auth/logout'),
+  register: (credentials: AuthCredentials) => authenticate('/api/v1/auth/register', credentials),
+  login: (credentials: AuthCredentials) => authenticate('/api/v1/auth/login', credentials),
+  refresh: refreshSession,
+  logout: async () => {
+    await refreshPromise?.catch(() => undefined);
+    await mutate<void>('/api/v1/auth/logout');
+    publishSession(null, true);
+  },
   getProfile: () => request<Profile>('/api/v1/profile'),
   saveProfile: (profile: ProfileInput) => mutate<Profile>('/api/v1/profile', {
     method: 'PUT',
@@ -317,4 +389,7 @@ export function isApiError(error: unknown, code?: string): error is ApiError {
 
 export function resetCsrfTokenForTests() {
   csrfPromise = undefined;
+  refreshPromise = undefined;
+  sessionGeneration = 0;
+  refreshVersion = 0;
 }

@@ -8,7 +8,7 @@ import {
   type PropsWithChildren,
 } from 'react';
 
-import { ApiError, api, type AuthCredentials, type AuthSession } from '../api/http';
+import { ApiError, api, subscribeSession, type AuthCredentials, type AuthSession } from '../api/http';
 
 interface AuthContextValue {
   session: AuthSession | null;
@@ -30,6 +30,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [initializationError, setInitializationError] = useState<string | null>(null);
+
+  useEffect(() => subscribeSession(setSession), []);
 
   const initialize = useCallback(async () => {
     setIsInitializing(true);

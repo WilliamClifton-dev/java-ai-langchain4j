@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState, type PropsWithChildren } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
-import { AuthProvider } from './auth/AuthContext';
+import { AuthProvider, useAuth } from './auth/AuthContext';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { AppShell } from './components/AppShell';
 import { AuthPage } from './pages/AuthPage';
@@ -15,14 +15,22 @@ import { WeeklyReviewPage } from './pages/WeeklyReviewPage';
 import { CoachPage } from './pages/CoachPage';
 
 export function App() {
+  return <BrowserRouter><AuthProvider><AccountRoutes /></AuthProvider></BrowserRouter>;
+}
+
+function SessionQueries({ children }: PropsWithChildren) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: { queries: { staleTime: 30_000, retry: false } },
   }));
+  useEffect(() => () => { queryClient.clear(); }, [queryClient]);
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+}
+
+function AccountRoutes() {
+  const { session } = useAuth();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
+    <SessionQueries key={session?.user.id ?? 'anonymous'}>
         <Routes>
           <Route path="/login" element={<AuthPage mode="login" />} />
           <Route path="/register" element={<AuthPage mode="register" />} />
@@ -39,8 +47,6 @@ export function App() {
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
+    </SessionQueries>
   );
 }
