@@ -36,10 +36,17 @@ public final class CoachToolProvider implements ToolProvider {
         return registry.find(request.chatMemoryId()).map(invocation -> {
             Map<ToolSpecification, ToolExecutor> bound = new LinkedHashMap<>();
             executors.forEach((specification, delegate) -> bound.put(specification,
-                    (toolRequest, memoryId) -> context.callAs(
+                    (toolRequest, memoryId) -> {
+                        // SDK executors outlive callbacks; cancellation must revoke future calls.
+                        if (!invocation.memoryId().equals(memoryId)
+                                || registry.find(memoryId).filter(invocation::equals).isEmpty()) {
+                            return "{\"success\":false,\"code\":\"TOOL_UNAUTHORIZED\",\"data\":null}";
+                        }
+                        return context.callAs(
                             invocation.userId(), invocation.conversationId(),
                             invocation.requestNonce(),
-                            () -> delegate.execute(toolRequest, memoryId))));
+                            () -> delegate.execute(toolRequest, memoryId));
+                    }));
             return ToolProviderResult.builder().addAll(bound).build();
         }).orElseGet(() -> ToolProviderResult.builder().build());
     }

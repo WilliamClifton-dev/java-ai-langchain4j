@@ -17,8 +17,37 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 class CoachToolProviderTest {
+
+    @Test
+    void rejectsPreviouslyBoundWriteToolsAfterCancellationAndConversationReuse() {
+        DailyTrackingService tracking = mock(DailyTrackingService.class);
+        CoachToolContext context = new CoachToolContext();
+        CoachTools tools = new CoachTools(context, mock(WeightPlanService.class), tracking,
+                mock(WeeklyReviewService.class), new CoachMetrics(new SimpleMeterRegistry()));
+        CoachInvocationRegistry registry = new CoachInvocationRegistry();
+        CoachModelRequest original = new CoachModelRequest("owner-1", "conversation",
+                "memory", "old-nonce", CoachScene.GENERAL_CHAT, "hello");
+        registry.register(original);
+        var executor = new CoachToolProvider(tools, context, registry)
+                .provideTools(new ToolProviderRequest("memory", UserMessage.from("hello")))
+                .tools().entrySet().stream()
+                .filter(entry -> entry.getKey().name().equals("record_training"))
+                .findFirst().orElseThrow().getValue();
+        var request = ToolExecutionRequest.builder().name("record_training").arguments("""
+                {"localDate":"2026-09-08","trainingType":"STRENGTH",
+                 "durationMinutes":30,"intensity":"MODERATE"}
+                """).build();
+
+        registry.remove(original);
+        assertThat(executor.execute(request, "memory")).contains("TOOL_UNAUTHORIZED");
+        registry.register(new CoachModelRequest("owner-1", "conversation", "memory",
+                "new-nonce", CoachScene.GENERAL_CHAT, "retry"));
+        assertThat(executor.execute(request, "memory")).contains("TOOL_UNAUTHORIZED");
+        verifyNoInteractions(tracking);
+    }
 
     @Test
     void bindsRegisteredOwnerOnTheActualToolExecutionThread() {
