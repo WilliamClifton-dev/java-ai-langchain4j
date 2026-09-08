@@ -19,32 +19,38 @@ public class CoachChatService {
     private final Clock clock;
     private final CoachToolContext toolContext;
     private final CoachConversationOwnershipService ownership;
+    private final CoachModelAccess modelAccess;
 
     public CoachChatService(
             HbtiCoachAgent agent,
             ScenePromptRepository promptRepository,
             Clock clock,
             CoachToolContext toolContext,
-            CoachConversationOwnershipService ownership
+            CoachConversationOwnershipService ownership,
+            CoachModelAccess modelAccess
     ) {
         this.agent = agent;
         this.promptRepository = promptRepository;
         this.clock = clock;
         this.toolContext = toolContext;
         this.ownership = ownership;
+        this.modelAccess = modelAccess;
     }
 
     public CoachChatResult chat(CoachChatCommand command) {
-        String memoryId = CoachMemoryKey.forOwner(command.userId(), command.conversationId());
-        ownership.claim(command.userId(), memoryId);
-        String answer = toolContext.callAs(command.userId(), command.conversationId(), () ->
-                agent.chat(
-                        memoryId,
-                        LocalDate.now(clock).toString(),
-                        promptRepository.get(command.scene()),
-                        command.message()
-                ));
-
-        return new CoachChatResult(command.conversationId(), command.scene(), answer);
+        try (CoachModelAccess.Permit permit = modelAccess.acquire(command.userId())) {
+            String memoryId = CoachMemoryKey.forOwner(command.userId(), command.conversationId());
+            ownership.claim(command.userId(), memoryId);
+            try {
+                String answer = toolContext.callAs(command.userId(), command.conversationId(), () ->
+                        agent.chat(memoryId, LocalDate.now(clock).toString(),
+                                promptRepository.get(command.scene()), command.message()));
+                permit.success();
+                return new CoachChatResult(command.conversationId(), command.scene(), answer);
+            } catch (RuntimeException failure) {
+                permit.failure();
+                throw new CoachModelException("MODEL_UNAVAILABLE", failure);
+            }
+        }
     }
 }

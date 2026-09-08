@@ -3,6 +3,7 @@ package com.atguigu.java.ai.langchain4j.coach.streaming;
 import com.atguigu.java.ai.langchain4j.coach.dto.CoachChatCommand;
 import com.atguigu.java.ai.langchain4j.coach.model.CoachScene;
 import com.atguigu.java.ai.langchain4j.coach.service.CoachMemoryKey;
+import com.atguigu.java.ai.langchain4j.coach.service.CoachModelAccess;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -143,8 +144,8 @@ class CoachStreamingServiceTest {
         CoachRateGuard rateGuard = new CoachRateGuard(
                 new InMemoryEphemeralStateStore(clock), 100, Duration.ofMinutes(1));
         CoachConversationOwnershipService ownership = mock(CoachConversationOwnershipService.class);
-        return new TestHarness(new CoachStreamingService(model, rateGuard, breaker, scheduler,
-                Duration.ofSeconds(5), Duration.ofSeconds(30), 2, clock,
+        return new TestHarness(new CoachStreamingService(model, new CoachModelAccess(rateGuard, breaker, 2), scheduler,
+                Duration.ofSeconds(5), Duration.ofSeconds(30),
                 new CoachMetrics(new SimpleMeterRegistry()), ownership), scheduled, ownership);
     }
 

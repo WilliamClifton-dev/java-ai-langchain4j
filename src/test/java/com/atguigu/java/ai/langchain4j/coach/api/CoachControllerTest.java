@@ -4,6 +4,7 @@ import com.atguigu.java.ai.langchain4j.coach.dto.CoachChatCommand;
 import com.atguigu.java.ai.langchain4j.coach.dto.CoachChatResult;
 import com.atguigu.java.ai.langchain4j.coach.model.CoachScene;
 import com.atguigu.java.ai.langchain4j.coach.service.CoachChatService;
+import com.atguigu.java.ai.langchain4j.coach.service.CoachModelException;
 import com.atguigu.java.ai.langchain4j.coach.streaming.CoachStreamingService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(CoachController.class)
 class CoachControllerTest {
+
+    @Test
+    void returnsStableModelQuotaErrorsWithoutProviderDetails() throws Exception {
+        when(coachChatService.chat(any())).thenThrow(new CoachModelException("MODEL_RATE_LIMITED"));
+        mockMvc.perform(post("/api/v1/coach/messages").with(jwt()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"conversationId":"c1","scene":"GENERAL_CHAT","message":"hello"}
+                                """))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.error.code").value("MODEL_RATE_LIMITED"));
+    }
 
     @Autowired
     private MockMvc mockMvc;

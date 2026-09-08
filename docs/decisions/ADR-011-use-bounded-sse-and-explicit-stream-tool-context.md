@@ -46,3 +46,16 @@ Rejected after output or tool execution because replay could duplicate user-visi
 - Breaker and concurrency state are local to one process and are not a distributed quota.
 - Cancellation removes authorization, releases application resources, and suppresses callbacks. LangChain4j `1.0.0-beta3` exposes no provider-request cancellation handle, so physical HTTP interruption is not guaranteed.
 - Stream state is ephemeral and reconstructable; durable messages remain in MySQL through the chat memory adapter.
+
+## Reliability corrections (2026-09-08)
+
+- Synchronous and streaming calls share owner rate counters, concurrent capacity,
+  and the model circuit through `CoachModelAccess`. Existing concurrency and circuit
+  configuration keys apply to both endpoints. Synchronous provider calls retain their
+  configured SDK timeout; first-token and overall stream deadlines remain SSE-specific.
+- Every bound streaming tool executor rechecks the active invocation and nonce at
+  execution time. Removing the registration rejects subsequent tool calls, including
+  callbacks from an older invocation after the same conversation is reused. A tool
+  call already admitted before cancellation may complete its transaction.
+- A terminal `error` can be the first SSE event when admission or ownership fails.
+  Tokens and successful completion still require preceding metadata.

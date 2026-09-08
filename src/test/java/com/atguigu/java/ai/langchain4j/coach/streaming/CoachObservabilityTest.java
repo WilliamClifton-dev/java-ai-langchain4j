@@ -1,4 +1,5 @@
 package com.atguigu.java.ai.langchain4j.coach.streaming;
+import com.atguigu.java.ai.langchain4j.coach.service.CoachModelAccess;
 
 import com.atguigu.java.ai.langchain4j.coach.dto.CoachChatCommand;
 import com.atguigu.java.ai.langchain4j.coach.model.CoachScene;
@@ -91,10 +92,10 @@ class CoachObservabilityTest {
         CoachMetrics metrics = new CoachMetrics(registry);
         CoachStreamingService service = new CoachStreamingService(
                 model,
-                new CoachRateGuard(new InMemoryEphemeralStateStore(appClock),
+                new CoachModelAccess(new CoachRateGuard(new InMemoryEphemeralStateStore(appClock),
                         100, Duration.ofMinutes(1)),
-                new ModelCircuitBreaker(3, Duration.ofSeconds(30), appClock),
-                scheduler, Duration.ofSeconds(5), Duration.ofSeconds(30), 2, appClock, metrics,
+                new ModelCircuitBreaker(3, Duration.ofSeconds(30), appClock), 2),
+                scheduler, Duration.ofSeconds(5), Duration.ofSeconds(30), metrics,
                 mock(CoachConversationOwnershipService.class));
         return new Harness(service, model, scheduled, registry, meterClock);
     }
