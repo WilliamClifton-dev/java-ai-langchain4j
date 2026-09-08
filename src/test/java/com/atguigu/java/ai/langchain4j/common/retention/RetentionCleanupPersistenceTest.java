@@ -21,6 +21,26 @@ class RetentionCleanupPersistenceTest {
     @Autowired JdbcTemplate jdbcTemplate;
 
     @Test
+    void boundsDeletesAndLeavesTheRemainingExpiredRowsForTheNextBatch() {
+        Instant cutoff = Instant.parse("2026-09-08T00:00:00Z");
+        String userId = "retention-batch-owner";
+        jdbcTemplate.update("""
+                INSERT INTO user_account (id, normalized_email, password_hash, status, created_at, updated_at)
+                VALUES (?, 'retention-batch@example.com', 'hash', 'ACTIVE', ?, ?)
+                """, userId, Timestamp.from(cutoff), Timestamp.from(cutoff));
+        for (int i = 0; i < 501; i++) {
+            insertToken("batch-token-" + i, userId, cutoff.minusSeconds(1), cutoff);
+            insertAudit("batch-audit", userId, cutoff.minusSeconds(1));
+        }
+        assertThat(mapper.deleteExpiredRefreshTokens(cutoff)).isEqualTo(500);
+        assertThat(mapper.deleteExpiredAuditEvents(cutoff)).isEqualTo(500);
+        assertThat(mapper.deleteExpiredRefreshTokens(cutoff)).isEqualTo(1);
+        assertThat(mapper.deleteExpiredAuditEvents(cutoff)).isEqualTo(1);
+        assertThat(mapper.deleteExpiredRefreshTokens(cutoff)).isZero();
+        assertThat(mapper.deleteExpiredAuditEvents(cutoff)).isZero();
+    }
+
+    @Test
     void deletesOnlyRowsOlderThanTheSuppliedCutoffs() {
         Instant now = Instant.parse("2026-08-17T12:00:00Z");
         String userId = "00000000-0000-4000-8000-000000000701";

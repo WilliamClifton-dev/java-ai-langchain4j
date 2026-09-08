@@ -26,6 +26,13 @@ delay. `RETENTION_CLEANUP_ENABLED` must remain true for public beta. The job del
 refresh-token rows whose expiry is more than seven days old and audit events older
 than 180 days. Account deletion remains immediate and does not wait for this job.
 
+Cleanup deletes at most 500 rows per transaction and continues until each expired
+set is drained, using a fixed cutoff for the run. Completed batches remain committed
+if a later batch fails; the next run resumes from the remaining expired rows. Flyway
+V13 adds indexes on `refresh_token.expires_at` and `audit_event.event_time` to support
+the cleanup predicates. V13 changes no data or retention periods. Application rollback
+can leave these indexes in place; removing them later requires a new forward migration.
+
 If the beta closes, operators give 30 days' notice and remove the primary database no
 later than 30 days after closure. Backups then age out under the schedule below.
 

@@ -8,9 +8,11 @@ import java.time.Instant;
 @Mapper
 public interface RetentionMapper {
 
-    @Delete("DELETE FROM refresh_token WHERE expires_at < #{cutoff}")
+    int BATCH_SIZE = 500;
+
+    @Delete("DELETE FROM refresh_token WHERE expires_at < #{cutoff} LIMIT " + BATCH_SIZE)
     int deleteExpiredRefreshTokens(Instant cutoff);
 
-    @Delete("DELETE FROM audit_event WHERE event_time < #{cutoff}")
+    @Delete("DELETE FROM audit_event WHERE event_time < #{cutoff} LIMIT " + BATCH_SIZE)
     int deleteExpiredAuditEvents(Instant cutoff);
 }
