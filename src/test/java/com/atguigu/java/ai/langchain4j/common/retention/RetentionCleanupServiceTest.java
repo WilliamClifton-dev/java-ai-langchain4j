@@ -23,18 +23,23 @@ class RetentionCleanupServiceTest {
         Instant now = Instant.parse("2026-08-17T12:00:00Z");
         Instant tokenCutoff = now.minus(Duration.ofDays(7));
         Instant auditCutoff = now.minus(Duration.ofDays(180));
+        Instant conversationCutoff = now.minus(Duration.ofDays(90));
         when(mapper.deleteExpiredRefreshTokens(tokenCutoff)).thenReturn(3);
         when(mapper.deleteExpiredAuditEvents(auditCutoff)).thenReturn(4);
+        when(mapper.deleteInactiveConversations(conversationCutoff)).thenReturn(2);
         RetentionCleanupService service = new RetentionCleanupService(
-                mapper, Clock.fixed(now, ZoneOffset.UTC), Duration.ofDays(7), Duration.ofDays(180), new RecordingTransactions());
+                mapper, Clock.fixed(now, ZoneOffset.UTC), Duration.ofDays(7), Duration.ofDays(180),
+                Duration.ofDays(90), new RecordingTransactions());
 
         RetentionCleanupService.RetentionCleanupResult result = service.purgeExpiredData();
 
         assertThat(result.refreshTokensDeleted()).isEqualTo(3);
         assertThat(result.auditEventsDeleted()).isEqualTo(4);
+        assertThat(result.conversationsDeleted()).isEqualTo(2);
         assertThat(result.completedAt()).isEqualTo(now);
         verify(mapper).deleteExpiredRefreshTokens(tokenCutoff);
         verify(mapper).deleteExpiredAuditEvents(auditCutoff);
+        verify(mapper).deleteInactiveConversations(conversationCutoff);
     }
 
     @Test
@@ -43,12 +48,14 @@ class RetentionCleanupServiceTest {
         Instant now = Instant.parse("2026-09-08T00:00:00Z");
         when(mapper.deleteExpiredRefreshTokens(now.minus(Duration.ofDays(7)))).thenReturn(500, 2);
         when(mapper.deleteExpiredAuditEvents(now.minus(Duration.ofDays(180)))).thenReturn(500, 500, 1);
+        when(mapper.deleteInactiveConversations(now.minus(Duration.ofDays(90)))).thenReturn(500, 500, 500, 3);
         RecordingTransactions transactions = new RecordingTransactions();
         var result = new RetentionCleanupService(mapper, Clock.fixed(now, ZoneOffset.UTC),
-                Duration.ofDays(7), Duration.ofDays(180), transactions).purgeExpiredData();
+                Duration.ofDays(7), Duration.ofDays(180), Duration.ofDays(90), transactions).purgeExpiredData();
         assertThat(result.refreshTokensDeleted()).isEqualTo(502);
         assertThat(result.auditEventsDeleted()).isEqualTo(1001);
-        assertThat(transactions.commits).isEqualTo(5);
+        assertThat(result.conversationsDeleted()).isEqualTo(1503);
+        assertThat(transactions.commits).isEqualTo(9);
     }
 
     private static final class RecordingTransactions extends AbstractPlatformTransactionManager {

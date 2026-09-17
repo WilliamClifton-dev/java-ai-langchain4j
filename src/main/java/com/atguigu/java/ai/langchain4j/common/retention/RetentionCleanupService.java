@@ -18,6 +18,7 @@ public class RetentionCleanupService {
     private final Clock clock;
     private final Duration refreshTokenGrace;
     private final Duration auditRetention;
+    private final Duration conversationRetention;
     private final TransactionTemplate batchTransaction;
 
     public RetentionCleanupService(
@@ -25,14 +26,17 @@ public class RetentionCleanupService {
             Clock clock,
             @Value("${hbti.retention.refresh-token-grace:P7D}") Duration refreshTokenGrace,
             @Value("${hbti.retention.audit-events:P180D}") Duration auditRetention,
+            @Value("${hbti.retention.conversations:P90D}") Duration conversationRetention,
             PlatformTransactionManager transactionManager) {
-        if (refreshTokenGrace.isNegative() || auditRetention.isNegative() || auditRetention.isZero()) {
+        if (refreshTokenGrace.isNegative() || auditRetention.isNegative() || auditRetention.isZero()
+                || conversationRetention.isNegative() || conversationRetention.isZero()) {
             throw new IllegalArgumentException("Retention durations must be bounded and positive");
         }
         this.mapper = mapper;
         this.clock = clock;
         this.refreshTokenGrace = refreshTokenGrace;
         this.auditRetention = auditRetention;
+        this.conversationRetention = conversationRetention;
         this.batchTransaction = new TransactionTemplate(transactionManager);
         this.batchTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
@@ -41,7 +45,8 @@ public class RetentionCleanupService {
         Instant now = clock.instant();
         int tokens = purgeBatches(() -> mapper.deleteExpiredRefreshTokens(now.minus(refreshTokenGrace)));
         int audits = purgeBatches(() -> mapper.deleteExpiredAuditEvents(now.minus(auditRetention)));
-        return new RetentionCleanupResult(tokens, audits, now);
+        int conversations = purgeBatches(() -> mapper.deleteInactiveConversations(now.minus(conversationRetention)));
+        return new RetentionCleanupResult(tokens, audits, conversations, now);
     }
 
     private int purgeBatches(IntSupplier delete) {
@@ -57,6 +62,7 @@ public class RetentionCleanupService {
     public record RetentionCleanupResult(
             int refreshTokensDeleted,
             int auditEventsDeleted,
+            int conversationsDeleted,
             Instant completedAt) {
     }
 }

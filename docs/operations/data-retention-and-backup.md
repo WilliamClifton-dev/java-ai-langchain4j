@@ -11,7 +11,8 @@ traffic.
 
 | Data | Retention and deletion rule |
 |---|---|
-| Active account, profile, HBTI attempts, plans, tracking, reviews and coach messages | retained until the user invokes account deletion; no inactive-account auto-deletion in L1 |
+| Active account, profile, HBTI attempts, plans, tracking, reviews | retained until the user invokes account deletion; no inactive-account auto-deletion in L1 |
+| Coach conversations and messages | 90 days since last message; inactive conversations are deleted by the daily cleanup job |
 | Account deletion | synchronous hard deletion of the account and owned rows; retained audit rows are anonymized immediately |
 | Refresh-token hashes | usable for at most 30 days; expired rows are deleted after a 7-day replay-investigation grace period by the daily cleanup job |
 | Audit events | 180 days, then deleted by the daily cleanup job |
@@ -23,15 +24,18 @@ traffic.
 
 The application runs `RetentionCleanupJob` every 24 hours after a one-hour startup
 delay. `RETENTION_CLEANUP_ENABLED` must remain true for public beta. The job deletes
-refresh-token rows whose expiry is more than seven days old and audit events older
-than 180 days. Account deletion remains immediate and does not wait for this job.
+refresh-token rows whose expiry is more than seven days old, audit events older
+than 180 days, and coach conversations with no message activity for more than 90 days.
+Account deletion remains immediate and does not wait for this job.
 
 Cleanup deletes at most 500 rows per transaction and continues until each expired
 set is drained, using a fixed cutoff for the run. Completed batches remain committed
 if a later batch fails; the next run resumes from the remaining expired rows. Flyway
-V13 adds indexes on `refresh_token.expires_at` and `audit_event.event_time` to support
-the cleanup predicates. V13 changes no data or retention periods. Application rollback
-can leave these indexes in place; removing them later requires a new forward migration.
+V13 adds indexes on `refresh_token.expires_at` and `audit_event.event_time`, V14 adds
+indexes on tracking tables for weekly review queries, and V15 adds `coach_conversation.last_message_at`
+with index for retention cleanup. These migrations change no data or retention periods.
+Application rollback can leave these indexes in place; removing them later requires
+a new forward migration.
 
 If the beta closes, operators give 30 days' notice and remove the primary database no
 later than 30 days after closure. Backups then age out under the schedule below.

@@ -15,4 +15,7 @@ public interface RetentionMapper {
 
     @Delete("DELETE FROM audit_event WHERE event_time < #{cutoff} LIMIT " + BATCH_SIZE)
     int deleteExpiredAuditEvents(Instant cutoff);
+
+    @Delete("DELETE FROM coach_conversation WHERE last_message_at < #{cutoff} LIMIT " + BATCH_SIZE)
+    int deleteInactiveConversations(Instant cutoff);
 }

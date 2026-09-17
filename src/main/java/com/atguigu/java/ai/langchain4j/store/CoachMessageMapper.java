@@ -21,9 +21,9 @@ interface CoachMessageMapper {
     List<String> findMessageJsonByConversationId(String conversationId);
 
     @Insert("""
-            INSERT INTO coach_conversation (id, version, created_at, updated_at)
-            VALUES (#{conversationId}, 0, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
-            ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP(6)
+            INSERT INTO coach_conversation (id, version, created_at, updated_at, last_message_at)
+            VALUES (#{conversationId}, 0, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
+            ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP(6), last_message_at = CURRENT_TIMESTAMP(6)
             """)
     int ensureConversation(String conversationId);
 

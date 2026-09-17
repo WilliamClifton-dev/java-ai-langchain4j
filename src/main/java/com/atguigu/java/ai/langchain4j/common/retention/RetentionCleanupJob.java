@@ -22,7 +22,7 @@ public class RetentionCleanupJob {
             fixedDelayString = "${hbti.retention.cleanup-interval:PT24H}")
     public void purgeExpiredData() {
         RetentionCleanupService.RetentionCleanupResult result = service.purgeExpiredData();
-        log.info("retention_cleanup_completed refresh_tokens_deleted={} audit_events_deleted={}",
-                result.refreshTokensDeleted(), result.auditEventsDeleted());
+        log.info("retention_cleanup_completed refresh_tokens_deleted={} audit_events_deleted={} conversations_deleted={}",
+                result.refreshTokensDeleted(), result.auditEventsDeleted(), result.conversationsDeleted());
     }
 }

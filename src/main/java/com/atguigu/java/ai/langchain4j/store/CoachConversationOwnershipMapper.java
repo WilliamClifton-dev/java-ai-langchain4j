@@ -9,11 +9,12 @@ import org.apache.ibatis.annotations.Select;
 interface CoachConversationOwnershipMapper {
 
     @Insert("""
-            INSERT INTO coach_conversation (id, user_id, version, created_at, updated_at)
-            VALUES (#{conversationId}, #{userId}, 0, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
+            INSERT INTO coach_conversation (id, user_id, version, created_at, updated_at, last_message_at)
+            VALUES (#{conversationId}, #{userId}, 0, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
             ON DUPLICATE KEY UPDATE
                 user_id = COALESCE(user_id, VALUES(user_id)),
-                updated_at = CURRENT_TIMESTAMP(6)
+                updated_at = CURRENT_TIMESTAMP(6),
+                last_message_at = CURRENT_TIMESTAMP(6)
             """)
     int claim(@Param("conversationId") String conversationId,
               @Param("userId") String userId);
