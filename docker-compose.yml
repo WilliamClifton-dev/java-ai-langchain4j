@@ -57,8 +57,8 @@ services:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/actuator/health/readiness"]
       interval: 10s
       timeout: 5s
-      retries: 12
-      start_period: 45s
+      retries: 15
+      start_period: 60s
     restart: unless-stopped
 
   web:
