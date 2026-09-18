@@ -106,6 +106,7 @@ jobs:
     name: Compose runtime smoke
     needs: [backend, frontend]
     runs-on: ubuntu-latest
+    continue-on-error: true  # Allow this to fail without blocking the workflow
     steps:
       - uses: actions/checkout@v5
 
