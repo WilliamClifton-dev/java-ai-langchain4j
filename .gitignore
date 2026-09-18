@@ -73,3 +73,6 @@ web/coverage/
 web/*.tsbuildinfo
 web/vite.config.js
 web/vite.config.d.ts
+
+# Local outputs and reports
+outputs/
