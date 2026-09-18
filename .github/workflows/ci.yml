@@ -15,10 +15,10 @@ jobs:
     name: Backend quality gates
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: temurin
@@ -41,7 +41,7 @@ jobs:
         run: ./scripts/security/osv-audit.ps1 -FailOn HIGH
 
       - name: Upload backend package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: hbti-coach-jar
           path: target/*.jar
@@ -50,7 +50,7 @@ jobs:
 
       - name: Upload backend dependency audit
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: backend-dependency-audit
           path: target/security/osv-report.json
@@ -59,7 +59,7 @@ jobs:
 
       - name: Upload offline AI evaluation
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: offline-ai-evaluation
           path: target/release-evidence/ai-safety/
@@ -73,10 +73,10 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
@@ -95,7 +95,7 @@ jobs:
         run: npm audit --audit-level=high
 
       - name: Upload frontend bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: hbti-coach-web
           path: web/dist/
@@ -107,7 +107,7 @@ jobs:
     needs: [backend, frontend]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Validate Compose configuration
         run: docker compose config --quiet
@@ -118,7 +118,7 @@ jobs:
 
       - name: Upload Compose smoke evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: compose-smoke-evidence
           path: target/compose-smoke/
