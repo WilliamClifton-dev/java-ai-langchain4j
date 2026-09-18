@@ -57,7 +57,7 @@ class DataLifecycleApiTest {
         assertThat(refresh).isNotNull();
         String userId = jdbcTemplate.queryForObject(
                 "SELECT id FROM user_account WHERE normalized_email = ?", String.class, email);
-        jdbcTemplate.update("INSERT INTO coach_conversation (id, user_id) VALUES (?, ?)",
+        jdbcTemplate.update("INSERT INTO coach_conversation (id, user_id, last_message_at) VALUES (?, ?, CURRENT_TIMESTAMP(6))",
                 "owned-export-" + userId, userId);
 
         mockMvc.perform(get("/api/v1/account/data-export").cookie(access))

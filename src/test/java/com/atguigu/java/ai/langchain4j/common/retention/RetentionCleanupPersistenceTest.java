@@ -58,8 +58,8 @@ class RetentionCleanupPersistenceTest {
         assertThat(mapper.deleteExpiredRefreshTokens(now.minusSeconds(7 * 86_400L))).isEqualTo(1);
         assertThat(mapper.deleteExpiredAuditEvents(now.minusSeconds(180 * 86_400L))).isEqualTo(1);
 
-        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM refresh_token", Integer.class)).isEqualTo(1);
-        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM audit_event", Integer.class)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM refresh_token WHERE user_id = ?", Integer.class, userId)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM audit_event WHERE user_id = ?", Integer.class, userId)).isEqualTo(1);
     }
 
     private void insertToken(String id, String userId, Instant expiresAt, Instant createdAt) {
