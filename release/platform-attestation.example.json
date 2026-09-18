@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0.0",
+  "environment": "replace-with-public-beta-environment",
+  "owner": "replace-with-accountable-operator",
+  "reviewedAt": "2026-08-17T00:00:00Z",
+  "releaseCommit": "replace-with-full-git-commit",
+  "backendImageDigest": "sha256:replace-with-published-digest",
+  "webImageDigest": "sha256:replace-with-published-digest",
+  "tlsConfigured": false,
+  "managedSecretsConfigured": false,
+  "hourlyEncryptedOffHostBackupConfigured": false,
+  "backupExpiryDays": 35,
+  "alertDeliveryTested": false,
+  "sloCollectionConfigured": false
+}

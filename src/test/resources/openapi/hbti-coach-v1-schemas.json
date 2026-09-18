@@ -1,0 +1,217 @@
+{
+  "version" : "1.0.0",
+  "schemas" : {
+    "ApiError" : {
+      "properties" : [ "code", "details", "message" ],
+      "required" : [ ]
+    },
+    "ApiErrorResponse" : {
+      "properties" : [ "error" ],
+      "required" : [ ]
+    },
+    "ProfileRequest" : {
+      "properties" : [ "activityLevel", "calculationSex", "currentWeightKg", "dateOfBirth", "heightCm", "targetWeightKg", "timeZone" ],
+      "required" : [ "activityLevel", "calculationSex", "dateOfBirth", "timeZone" ]
+    },
+    "ProfileResponse" : {
+      "properties" : [ "activityLevel", "calculationSex", "currentWeightKg", "dateOfBirth", "heightCm", "targetWeightKg", "timeZone", "userId" ],
+      "required" : [ ]
+    },
+    "WeeklyReviewRequest" : {
+      "properties" : [ "windowEnd" ],
+      "required" : [ "windowEnd" ]
+    },
+    "WeeklyReviewResponse" : {
+      "properties" : [ "averageSleepMinutes", "averageSteps", "averageWeightKg", "createdAt", "id", "limitation", "nutritionAdherencePercent", "nutritionLoggedDays", "planVersionId", "policyVersion", "proposedEnergyDeltaKcalPerDay", "reason", "recommendation", "sleepObservedDays", "stepsObservedDays", "totalTrainingMinutes", "trainingDays", "versionNo", "weightObservationDays", "weightTrendPercent", "windowEnd", "windowStart" ],
+      "required" : [ ]
+    },
+    "WeeklyReviewWriteResponse" : {
+      "properties" : [ "replayed", "review" ],
+      "required" : [ ]
+    },
+    "TrainingRequest" : {
+      "properties" : [ "durationMinutes", "intensity", "localDate", "trainingType" ],
+      "required" : [ "durationMinutes", "intensity", "localDate", "trainingType" ]
+    },
+    "TrackingWriteResponseTrainingLog" : {
+      "properties" : [ "record", "replayed" ],
+      "required" : [ ]
+    },
+    "TrainingLog" : {
+      "properties" : [ "createdAt", "durationMinutes", "id", "intensity", "localDate", "trainingType" ],
+      "required" : [ ]
+    },
+    "NutritionRequest" : {
+      "properties" : [ "carbohydrateG", "energyKcal", "fatG", "localDate", "proteinG" ],
+      "required" : [ "carbohydrateG", "energyKcal", "fatG", "localDate", "proteinG" ]
+    },
+    "NutritionLog" : {
+      "properties" : [ "carbohydrateG", "createdAt", "energyKcal", "fatG", "id", "localDate", "proteinG" ],
+      "required" : [ ]
+    },
+    "TrackingWriteResponseNutritionLog" : {
+      "properties" : [ "record", "replayed" ],
+      "required" : [ ]
+    },
+    "DailyMetricRequest" : {
+      "properties" : [ "activityMinutes", "localDate", "sleepMinutes", "sleepQuality", "steps", "weightKg" ],
+      "required" : [ "localDate" ]
+    },
+    "DailyMetric" : {
+      "properties" : [ "activityMinutes", "createdAt", "id", "localDate", "sleepMinutes", "sleepQuality", "steps", "weightKg" ],
+      "required" : [ ]
+    },
+    "TrackingWriteResponseDailyMetric" : {
+      "properties" : [ "record", "replayed" ],
+      "required" : [ ]
+    },
+    "SafetyScreeningRequest" : {
+      "properties" : [ "concerningSymptoms", "eatingDisorderHistory", "medicalGuidanceRequired", "pregnantOrBreastfeeding", "weightAffectingMedication" ],
+      "required" : [ "concerningSymptoms", "eatingDisorderHistory", "medicalGuidanceRequired", "pregnantOrBreastfeeding", "weightAffectingMedication" ]
+    },
+    "SafetyScreeningResponse" : {
+      "properties" : [ "automaticPlanningAllowed", "createdAt", "guidance", "id", "reasonCodes", "status", "version" ],
+      "required" : [ ]
+    },
+    "WeightPlanVersionResponse" : {
+      "properties" : [ "activatedAt", "bmi", "bmrKcalPerDay", "confirmedAt", "createdAt", "energyMaxKcalPerDay", "energyMinKcalPerDay", "formulaVersion", "goal", "guidance", "id", "planId", "replacedAt", "status", "targetPolicyVersion", "tdeeKcalPerDay", "validatedAt", "versionNo", "weeklyWeightChangeMaxPercent", "weeklyWeightChangeMinPercent" ],
+      "required" : [ ]
+    },
+    "WeightPlanDraftRequest" : {
+      "properties" : [ "goal" ],
+      "required" : [ "goal" ]
+    },
+    "CoachChatRequest" : {
+      "properties" : [ "conversationId", "message", "scene" ],
+      "required" : [ "conversationId", "message", "scene" ]
+    },
+    "CoachChatResult" : {
+      "properties" : [ "answer", "conversationId", "scene" ],
+      "required" : [ ]
+    },
+    "SseEmitter" : {
+      "properties" : [ "timeout" ],
+      "required" : [ ]
+    },
+    "AuthCredentialsRequest" : {
+      "properties" : [ "email", "password" ],
+      "required" : [ "email", "password" ]
+    },
+    "AuthSessionResponse" : {
+      "properties" : [ "accessExpiresAt", "user" ],
+      "required" : [ ]
+    },
+    "User" : {
+      "properties" : [ "email", "id" ],
+      "required" : [ ]
+    },
+    "HbtiAnswerRequest" : {
+      "properties" : [ "itemKey", "value" ],
+      "required" : [ "itemKey", "value" ]
+    },
+    "HbtiAssessmentSubmissionRequest" : {
+      "properties" : [ "answers", "definitionVersion" ],
+      "required" : [ "answers", "definitionVersion" ]
+    },
+    "HbtiAssessmentResultResponse" : {
+      "properties" : [ "completedAt", "definitionVersion", "dimensions", "id", "limitation", "scoringRuleVersion", "typeCode" ],
+      "required" : [ ]
+    },
+    "HbtiAssessmentSubmissionResponse" : {
+      "properties" : [ "replayed", "result" ],
+      "required" : [ ]
+    },
+    "HbtiDimensionScore" : {
+      "properties" : [ "chosenPole", "dimensionCode", "leftScore", "rightScore" ],
+      "required" : [ ]
+    },
+    "DailySummaryResponse" : {
+      "properties" : [ "localDate", "metric", "nutrition", "trainingMinutes", "trainingSessions" ],
+      "required" : [ ]
+    },
+    "CoachCapabilityResponse" : {
+      "properties" : [ "available", "message", "mode" ],
+      "required" : [ ]
+    },
+    "CsrfToken" : {
+      "properties" : [ "headerName", "parameterName", "token" ],
+      "required" : [ ]
+    },
+    "HbtiAssessmentPageResponse" : {
+      "properties" : [ "items", "page", "pageSize", "totalItems" ],
+      "required" : [ ]
+    },
+    "Dimension" : {
+      "properties" : [ "code", "descriptionEn", "descriptionZh", "leftLabel", "leftPole", "ordinal", "rightLabel", "rightPole" ],
+      "required" : [ ]
+    },
+    "HbtiDefinitionResponse" : {
+      "properties" : [ "answerMax", "answerMin", "dimensions", "displayName", "items", "limitation", "version" ],
+      "required" : [ ]
+    },
+    "Item" : {
+      "properties" : [ "hintEn", "hintZh", "itemKey", "ordinal", "titleEn", "titleZh" ],
+      "required" : [ ]
+    },
+    "Account" : {
+      "properties" : [ "createdAt", "email", "id", "status", "updatedAt" ],
+      "required" : [ ]
+    },
+    "AccountDataExport" : {
+      "properties" : [ "account", "assessments", "coachConversations", "dailyMetrics", "exportedAt", "nutritionLogs", "plans", "profile", "screenings", "trainingLogs", "version", "weeklyReviews" ],
+      "required" : [ ]
+    },
+    "Answer" : {
+      "properties" : [ "answerValue", "itemKey" ],
+      "required" : [ ]
+    },
+    "Assessment" : {
+      "properties" : [ "answers", "completedAt", "createdAt", "definitionId", "id", "scores", "status", "typeCode" ],
+      "required" : [ ]
+    },
+    "Conversation" : {
+      "properties" : [ "createdAt", "id", "messages", "updatedAt" ],
+      "required" : [ ]
+    },
+    "Message" : {
+      "properties" : [ "createdAt", "id", "messageJson", "sequenceNo" ],
+      "required" : [ ]
+    },
+    "Nutrition" : {
+      "properties" : [ "carbohydrateG", "createdAt", "energyKcal", "fatG", "id", "localDate", "proteinG" ],
+      "required" : [ ]
+    },
+    "Plan" : {
+      "properties" : [ "activeVersionId", "createdAt", "id", "nextVersionNo", "updatedAt", "versions" ],
+      "required" : [ ]
+    },
+    "PlanVersion" : {
+      "properties" : [ "activatedAt", "assessmentAttemptId", "bmi", "bmrKcalPerDay", "confirmedAt", "createdAt", "energyMaxKcalPerDay", "energyMinKcalPerDay", "formulaVersion", "goal", "id", "profileUpdatedAt", "replacedAt", "screeningId", "screeningVersion", "status", "targetPolicyVersion", "tdeeKcalPerDay", "validatedAt", "versionNo", "weeklyWeightChangeMaxPercent", "weeklyWeightChangeMinPercent" ],
+      "required" : [ ]
+    },
+    "Profile" : {
+      "properties" : [ "activityLevel", "calculationSex", "createdAt", "currentWeightKg", "dateOfBirth", "heightCm", "screeningVersion", "targetWeightKg", "timeZone", "updatedAt" ],
+      "required" : [ ]
+    },
+    "Score" : {
+      "properties" : [ "chosenPole", "dimensionCode", "leftScore", "ordinal", "rightScore" ],
+      "required" : [ ]
+    },
+    "Screening" : {
+      "properties" : [ "automaticPlanningAllowed", "concerningSymptoms", "createdAt", "eatingDisorderHistory", "id", "medicalGuidanceRequired", "pregnantOrBreastfeeding", "reasonCodes", "status", "version", "weightAffectingMedication" ],
+      "required" : [ ]
+    },
+    "Training" : {
+      "properties" : [ "createdAt", "durationMinutes", "id", "intensity", "localDate", "trainingType" ],
+      "required" : [ ]
+    },
+    "WeeklyReview" : {
+      "properties" : [ "averageSleepMinutes", "averageSteps", "averageWeightKg", "createdAt", "id", "nutritionAdherencePercent", "nutritionLoggedDays", "planVersionId", "policyVersion", "proposedEnergyDeltaKcal", "reason", "recommendation", "sleepObservedDays", "stepsObservedDays", "totalTrainingMinutes", "trainingDays", "versionNo", "weightObservationDays", "weightTrendPercent", "windowEnd", "windowStart" ],
+      "required" : [ ]
+    },
+    "DeleteAccountRequest" : {
+      "properties" : [ "confirmation" ],
+      "required" : [ "confirmation" ]
+    }
+  }
+}

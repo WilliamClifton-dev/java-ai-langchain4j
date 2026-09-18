@@ -1,0 +1,14 @@
+{
+  "lineEndings": "LF-normalized",
+  "version": "1.0.0",
+  "hashAlgorithm": "SHA-256",
+  "prompts": {
+    "hbti/scenes/weekly-review.txt": "1837a30648569faa0e1ceaa267c82f9902bb8ed08a3b576d02e9c59c0c713f16",
+    "hbti/scenes/safety-screening.txt": "4c57d235376c6c14448c7207b1ac45c81332aa310eebd1c39e3bff9eb3017e38",
+    "hbti/scenes/hbti-interpretation.txt": "fc97ae83993a91c6ed5d9d8babfe3715668bc87e88beef930f3d6db9b7d8f0d4",
+    "hbti/scenes/general-chat.txt": "ba17c6aeff8ae7f4fbd9854796dea3a0452352d6bd3be15da90b661a91f36f09",
+    "hbti/scenes/plan-generation.txt": "38c263191efc407b5373437c224ee19730a03c19f5676189ac224fda8914427e",
+    "hbti/core.txt": "4e1f424e3ff77b880a8eb2a112499d942cd01a7ec8d260a552753f13512dd1f9",
+    "hbti/scenes/daily-checkin.txt": "95f003589bd83c22dafd7b441516a903991e4823851b37562383e77139614cfc"
+  }
+}
