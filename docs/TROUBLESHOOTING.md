@@ -315,9 +315,7 @@ cat target/security/osv-report.json
 
 ### Compose smoke 测试不稳定
 
-**已知问题**：CI 环境中容器启动时间不一致。
-
-**当前策略**：测试标记为 `continue-on-error: true`，不阻塞主构建。
+**当前策略**：Pull Request 和 `main` 的 CI 中，Compose runtime smoke 是阻塞门禁。失败时先查看 `compose-smoke-evidence` artifact、容器健康状态与 `target/compose-smoke/` 日志，再按下方超时和镜像构建问题排查。普通 feature branch push 不运行这项耗时门禁。
 
 ## 获取帮助
 

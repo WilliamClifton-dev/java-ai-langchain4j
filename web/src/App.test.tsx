@@ -20,6 +20,7 @@ const session = {
 describe('account experience', () => {
   afterEach(() => {
     resetCsrfTokenForTests();
+    window.sessionStorage.clear();
     vi.unstubAllGlobals();
   });
 
@@ -34,6 +35,9 @@ describe('account experience', () => {
     render(<App />);
 
     expect(await screen.findByRole('heading', { name: '身份信息' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /完善个人档案/ })).toHaveAttribute('href', '/profile');
+    expect(screen.getByRole('link', { name: /完成 HBTI 测评/ })).toHaveAttribute('href', '/assessment');
+    expect(screen.getByRole('link', { name: /记录今天/ })).toHaveAttribute('href', '/tracking');
     expect(screen.getAllByText('user@example.com')).toHaveLength(2);
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
       '/api/v1/auth/session',
@@ -208,6 +212,89 @@ describe('account experience', () => {
     expect(fetchMock.mock.calls[4][0]).toBe('/api/v1/assessments/hbti/submissions');
     expect(new Headers(fetchMock.mock.calls[4][1]?.headers).get('Idempotency-Key')).toBeTruthy();
     expect(JSON.parse(fetchMock.mock.calls[4][1]?.body as string).answers).toHaveLength(16);
+  });
+
+  it('restores an unfinished HBTI questionnaire after a refresh', async () => {
+    window.history.replaceState({}, '', '/assessment');
+    const items = [1, 2].map((index) => ({
+      itemKey: `q${index}`, ordinal: index, titleZh: `问题 ${index}`, hintZh: '请选择最符合你近况的选项',
+      titleEn: `Question ${index}`, hintEn: 'Choose one',
+    }));
+    const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
+      const path = String(input);
+      if (path === '/api/v1/auth/session') return Promise.resolve(jsonResponse(session));
+      if (path === '/api/v1/assessments/hbti/definitions/1.0.0') return Promise.resolve(jsonResponse({
+        version: '1.0.0', displayName: 'HBTI', answerMin: 1, answerMax: 5,
+        dimensions: [], items, limitation: 'HBTI is exploratory.',
+      }));
+      if (path === '/api/v1/assessments/hbti/results/current') return Promise.resolve(jsonResponse({ error: { code: 'ASSESSMENT_RESULT_NOT_FOUND', message: 'No result', details: {} } }, 404));
+      return Promise.reject(new Error(`unexpected request ${path}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    const firstRender = render(<App />);
+    await user.click(await screen.findByRole('button', { name: '开始测评' }));
+    await user.click(screen.getByRole('radio', { name: '4' }));
+    expect(await screen.findByRole('heading', { name: '问题 2' })).toBeInTheDocument();
+    await waitFor(() => expect(window.sessionStorage.length).toBe(1));
+    firstRender.unmount();
+
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: '问题 2' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('已恢复上次未完成的进度');
+    await user.click(screen.getByRole('button', { name: '上一题' }));
+    expect(await screen.findByRole('heading', { name: '问题 1' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: '4' })).toBeChecked();
+  });
+
+  it('reuses the assessment submission key after a failed request and refresh', async () => {
+    window.history.replaceState({}, '', '/assessment');
+    const items = [1, 2].map((index) => ({
+      itemKey: `q${index}`, ordinal: index, titleZh: `问题 ${index}`, hintZh: '请选择最符合你近况的选项',
+      titleEn: `Question ${index}`, hintEn: 'Choose one',
+    }));
+    let submissionAttempts = 0;
+    const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
+      const path = String(input);
+      if (path === '/api/v1/auth/session') return Promise.resolve(jsonResponse(session));
+      if (path === '/api/v1/assessments/hbti/definitions/1.0.0') return Promise.resolve(jsonResponse({
+        version: '1.0.0', displayName: 'HBTI', answerMin: 1, answerMax: 5,
+        dimensions: [], items, limitation: 'HBTI is exploratory.',
+      }));
+      if (path === '/api/v1/assessments/hbti/results/current') return Promise.resolve(jsonResponse({ error: { code: 'ASSESSMENT_RESULT_NOT_FOUND', message: 'No result', details: {} } }, 404));
+      if (path === '/api/v1/auth/csrf') return Promise.resolve(jsonResponse({ headerName: 'X-XSRF-TOKEN', token: 'csrf-value' }));
+      if (path === '/api/v1/assessments/hbti/submissions') {
+        submissionAttempts += 1;
+        if (submissionAttempts === 1) return Promise.reject(new TypeError('network unavailable'));
+        return Promise.resolve(jsonResponse({
+          result: { id: 'r1', definitionVersion: '1.0.0', scoringRuleVersion: '1.0.0', dimensions: [], typeCode: 'FHRN', limitation: 'HBTI is exploratory.', completedAt: '2026-08-16T12:00:00Z' },
+          replayed: true,
+        }));
+      }
+      return Promise.reject(new Error(`unexpected request ${path}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    const firstRender = render(<App />);
+    await user.click(await screen.findByRole('button', { name: '开始测评' }));
+    await user.click(screen.getByRole('radio', { name: '3' }));
+    await user.click(screen.getByRole('radio', { name: '3' }));
+    await user.click(screen.getByRole('button', { name: '提交测评' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('提交失败');
+    const firstKey = new Headers(fetchMock.mock.calls.find((call) => call[0] === '/api/v1/assessments/hbti/submissions')?.[1]?.headers)
+      .get('Idempotency-Key');
+    expect(firstKey).toBeTruthy();
+    firstRender.unmount();
+
+    render(<App />);
+    expect(await screen.findByRole('status')).toHaveTextContent('已恢复上次未完成的进度');
+    await user.click(screen.getByRole('button', { name: '提交测评' }));
+    expect(await screen.findByRole('heading', { name: 'HBTI 维度画像' })).toBeInTheDocument();
+    const submissionRequests = fetchMock.mock.calls.filter((call) => call[0] === '/api/v1/assessments/hbti/submissions');
+    const retryKey = new Headers(submissionRequests[1][1]?.headers).get('Idempotency-Key');
+    expect(retryKey).toBe(firstKey);
   });
 
   it('creates, validates, confirms and activates a server-calculated plan', async () => {

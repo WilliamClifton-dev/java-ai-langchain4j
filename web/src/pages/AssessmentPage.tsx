@@ -1,27 +1,80 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, CheckCircle2, RotateCcw } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
+import { useAuth } from '../auth/AuthContext';
 import type { HbtiDefinition, HbtiResult } from '../api/domain';
 import { api, isApiError } from '../api/http';
 
 const VERSION = '1.0.0';
 const SCALE = [1, 2, 3, 4, 5];
 
+function draftKey(userId: string) {
+  return `hbti-assessment-draft:${userId}:${VERSION}`;
+}
+
+interface AssessmentDraft {
+  answers: Record<string, number>;
+  questionIndex: number;
+  started: boolean;
+  submissionKey?: string;
+}
+
+function readDraft(key: string): AssessmentDraft | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Partial<AssessmentDraft>;
+    if (!value.started || !value.answers || typeof value.answers !== 'object'
+      || typeof value.questionIndex !== 'number' || !Number.isInteger(value.questionIndex)
+      || value.questionIndex < 0 || value.questionIndex > 15) return null;
+    const answers = Object.fromEntries(Object.entries(value.answers).filter(([key, answer]) =>
+      /^q(?:[1-9]|1[0-6])$/.test(key) && Number.isInteger(answer) && Number(answer) >= 1 && Number(answer) <= 5,
+    )) as Record<string, number>;
+    const submissionKey = typeof value.submissionKey === 'string'
+      && value.submissionKey.length > 0 && value.submissionKey.length <= 200
+      ? value.submissionKey
+      : undefined;
+    return { answers, questionIndex: value.questionIndex, started: true, submissionKey };
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(key: string, draft: AssessmentDraft) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(draft));
+  } catch {
+    // Draft recovery is best effort and must never block the questionnaire.
+  }
+}
+
+function clearDraft(key: string) {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {
+    // Ignore storage restrictions; the server submission remains authoritative.
+  }
+}
+
 function idempotencyKey() {
   return globalThis.crypto?.randomUUID?.() ?? `assessment-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 export function AssessmentPage() {
+  const { session } = useAuth();
   const queryClient = useQueryClient();
   const definitionQuery = useQuery({ queryKey: ['hbti', 'definition', VERSION], queryFn: () => api.getHbtiDefinition(VERSION) });
   const resultQuery = useQuery({ queryKey: ['hbti', 'result'], queryFn: api.getCurrentHbtiResult });
-  const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [questionIndex, setQuestionIndex] = useState(0);
-  const [started, setStarted] = useState(false);
+  const storageKey = draftKey(session!.user.id);
+  const [initialDraft] = useState(() => readDraft(storageKey));
+  const hasRecoveredDraft = Boolean(initialDraft);
+  const [answers, setAnswers] = useState<Record<string, number>>(() => initialDraft?.answers ?? {});
+  const [questionIndex, setQuestionIndex] = useState(() => initialDraft?.questionIndex ?? 0);
+  const [started, setStarted] = useState(() => initialDraft?.started ?? false);
   const [localResult, setLocalResult] = useState<HbtiResult | null>(null);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
-  const submissionKey = useRef<string | null>(null);
+  const submissionKey = useRef<string | null>(initialDraft?.submissionKey ?? null);
 
   const submitMutation = useMutation({
     mutationFn: () => api.submitHbti(VERSION, Object.entries(answers).map(([itemKey, value]) => ({ itemKey, value })), submissionKey.current ?? (submissionKey.current = idempotencyKey())),
@@ -30,8 +83,15 @@ export function AssessmentPage() {
       queryClient.setQueryData(['hbti', 'result'], response.result);
       setStarted(false);
       submissionKey.current = null;
+      clearDraft(storageKey);
     },
   });
+
+  useEffect(() => {
+    if (started && Object.keys(answers).length > 0) {
+      writeDraft(storageKey, { answers, questionIndex, started, submissionKey: submissionKey.current ?? undefined });
+    }
+  }, [answers, questionIndex, started, storageKey]);
 
   const definition = definitionQuery.data;
   const result = localResult ?? resultQuery.data;
@@ -42,6 +102,7 @@ export function AssessmentPage() {
 
   function choose(value: number) {
     if (!item) return;
+    if (answers[item.itemKey] !== value) submissionKey.current = null;
     setAnswers((current) => ({ ...current, [item.itemKey]: value }));
     setValidationMessage(null);
     if (questionIndex < definition!.items.length - 1) {
@@ -54,6 +115,8 @@ export function AssessmentPage() {
       setValidationMessage('请选择一个最符合当前情况的选项');
       return;
     }
+    const key = submissionKey.current ?? (submissionKey.current = idempotencyKey());
+    writeDraft(storageKey, { answers, questionIndex, started, submissionKey: key });
     submitMutation.mutate();
   }
 
@@ -63,7 +126,7 @@ export function AssessmentPage() {
   }
 
   if (result && !started) {
-    return <ResultView result={result} definition={definition!} onRetake={() => { setAnswers({}); setQuestionIndex(0); setLocalResult(null); setStarted(true); }} />;
+    return <ResultView result={result} definition={definition!} onRetake={() => { clearDraft(storageKey); submissionKey.current = null; setAnswers({}); setQuestionIndex(0); setLocalResult(null); setStarted(true); }} />;
   }
 
   return (
@@ -82,6 +145,7 @@ export function AssessmentPage() {
           <div className="progress-meta"><span>问题 {questionIndex + 1} / {definition!.items.length}</span><span>{Math.round(((questionIndex + 1) / definition!.items.length) * 100)}%</span></div>
           <div className="progress-track"><span style={{ width: `${((questionIndex + 1) / definition!.items.length) * 100}%` }} /></div>
           <div className="question-block">
+            {hasRecoveredDraft && <p className="question-resume-note" role="status">已恢复上次未完成的进度</p>}
             <p className="eyebrow">{item?.hintZh}</p><h2 id="question-title">{item?.titleZh}</h2>
             {item?.itemKey === 'q4' && <p className="question-explanation">这里的“反应特别强”是指：看到或吃到这类食物后，容易产生明显的想吃、继续吃或优先选择它们的冲动。</p>}
             <fieldset className="scale-fieldset"><legend>符合程度</legend><div className="scale-options">{SCALE.map((value) => <label className={answers[item!.itemKey] === value ? 'scale-option selected' : 'scale-option'} key={value}><input type="radio" name={item!.itemKey} value={value} checked={answers[item!.itemKey] === value} onChange={() => choose(value)} /><span>{value}</span></label>)}</div><div className="scale-legend"><span>完全不符合</span><span>非常符合</span></div></fieldset>

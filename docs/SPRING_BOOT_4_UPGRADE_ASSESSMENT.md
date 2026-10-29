@@ -1,5 +1,7 @@
 # Spring Boot 4.x 升级评估
 
+> **历史评估快照（2026-09-18，已过期）**：文中的版本、Java 基线、依赖兼容性和性能预测尚未按当前仓库验证；其中“启动快 3 倍”“内存降低 40%”只是未经测量的估计，不可引用为成果。当前仍运行 Spring Boot 3.5.16；Boot 4 迁移未完成。已知 Spring advisory 的触发条件和限期例外见 [OSV 可达性例外清单](../config/security/osv-reachability-exceptions.json) 与[项目状态](PROJECT_STATUS_2026_09_18.md)。
+
 ## 概述
 
 本文档评估从 Spring Boot 3.5.16 升级到 Spring Boot 4.1.x 的可行性、影响和计划。

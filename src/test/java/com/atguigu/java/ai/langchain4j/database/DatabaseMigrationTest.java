@@ -69,6 +69,8 @@ class DatabaseMigrationTest {
             assertThat(uniqueIndexExists(
                     metadata, "assessment_attempt", Set.of("user_id", "idempotency_key_hash")
             )).isTrue();
+            assertThat(indexExists(metadata, "assessment_attempt", "idx_assessment_attempt_idempotency"))
+                    .isFalse();
             assertThat(importedKeyExists(metadata, "assessment_attempt", "user_account")).isTrue();
             assertThat(importedKeyExists(metadata, "assessment_attempt", "assessment_definition")).isTrue();
             assertThat(importedKeyExists(metadata, "assessment_answer", "assessment_attempt")).isTrue();
@@ -126,6 +128,8 @@ class DatabaseMigrationTest {
             assertThat(uniqueIndexExists(
                     metadata, "knowledge_chunk", Set.of("version_id", "ordinal")
             )).isTrue();
+            assertThat(indexExists(metadata, "knowledge_chunk", "idx_knowledge_chunk_version"))
+                    .isFalse();
             assertThat(importedKeyExists(
                     metadata, "knowledge_document_version", "knowledge_document"
             )).isTrue();
@@ -159,6 +163,19 @@ class DatabaseMigrationTest {
             }
         }
         return indexColumns.values().stream().anyMatch(expectedColumns::equals);
+    }
+
+    private boolean indexExists(DatabaseMetaData metadata, String tableName, String expectedIndex)
+            throws SQLException {
+        String actualTableName = actualTableName(metadata, tableName);
+        try (ResultSet indexes = metadata.getIndexInfo(null, null, actualTableName, false, false)) {
+            while (indexes.next()) {
+                if (expectedIndex.equalsIgnoreCase(indexes.getString("INDEX_NAME"))) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private boolean importedKeyExists(

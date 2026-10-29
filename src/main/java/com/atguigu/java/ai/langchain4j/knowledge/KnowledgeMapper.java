@@ -10,6 +10,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import static com.atguigu.java.ai.langchain4j.knowledge.KnowledgeRetrievalPolicy.MAX_CANDIDATE_CHUNKS;
+
 @Mapper
 interface KnowledgeMapper {
     @Select("SELECT id, source_key, created_at FROM knowledge_document WHERE source_key = #{sourceKey}")
@@ -96,7 +98,6 @@ interface KnowledgeMapper {
             JOIN knowledge_document d ON d.id = v.document_id
             WHERE v.status = 'PUBLISHED' AND v.locale = #{locale}
             ORDER BY d.source_key, v.version_no DESC, c.ordinal, c.id
-            LIMIT 500
-            """)
+            LIMIT \s""" + MAX_CANDIDATE_CHUNKS)
     List<PublishedKnowledgeRow> publishedChunks(String locale);
 }

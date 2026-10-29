@@ -1,5 +1,6 @@
 package com.atguigu.java.ai.langchain4j.config;
 
+import com.atguigu.java.ai.langchain4j.coach.CoachMemoryPolicy;
 import com.atguigu.java.ai.langchain4j.store.MySqlChatMemoryStore;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -13,7 +14,7 @@ public class ChatMemoryConfig {
     ChatMemoryProvider chatMemoryProvider(MySqlChatMemoryStore store) {
         return memoryId -> MessageWindowChatMemory.builder()
                 .id(memoryId)
-                .maxMessages(10)
+                .maxMessages(CoachMemoryPolicy.MESSAGE_WINDOW_SIZE)
                 .chatMemoryStore(store)
                 .build();
     }
