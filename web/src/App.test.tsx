@@ -20,6 +20,7 @@ const session = {
 describe('account experience', () => {
   afterEach(() => {
     resetCsrfTokenForTests();
+    window.sessionStorage.clear();
     vi.unstubAllGlobals();
   });
 
@@ -34,6 +35,9 @@ describe('account experience', () => {
     render(<App />);
 
     expect(await screen.findByRole('heading', { name: '身份信息' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /完善个人档案/ })).toHaveAttribute('href', '/profile');
+    expect(screen.getByRole('link', { name: /完成 HBTI 测评/ })).toHaveAttribute('href', '/assessment');
+    expect(screen.getByRole('link', { name: /记录今天/ })).toHaveAttribute('href', '/tracking');
     expect(screen.getAllByText('user@example.com')).toHaveLength(2);
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
       '/api/v1/auth/session',
@@ -208,6 +212,39 @@ describe('account experience', () => {
     expect(fetchMock.mock.calls[4][0]).toBe('/api/v1/assessments/hbti/submissions');
     expect(new Headers(fetchMock.mock.calls[4][1]?.headers).get('Idempotency-Key')).toBeTruthy();
     expect(JSON.parse(fetchMock.mock.calls[4][1]?.body as string).answers).toHaveLength(16);
+  });
+
+  it('restores an unfinished HBTI questionnaire after a refresh', async () => {
+    window.history.replaceState({}, '', '/assessment');
+    const items = [1, 2].map((index) => ({
+      itemKey: `q${index}`, ordinal: index, titleZh: `问题 ${index}`, hintZh: '请选择最符合你近况的选项',
+      titleEn: `Question ${index}`, hintEn: 'Choose one',
+    }));
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path === '/api/v1/auth/session') return Promise.resolve(jsonResponse(session));
+      if (path === '/api/v1/assessments/hbti/definitions/1.0.0') return Promise.resolve(jsonResponse({
+        version: '1.0.0', displayName: 'HBTI', answerMin: 1, answerMax: 5,
+        dimensions: [], items, limitation: 'HBTI is exploratory.',
+      }));
+      if (path === '/api/v1/assessments/hbti/results/current') return Promise.resolve(jsonResponse({ error: { code: 'ASSESSMENT_RESULT_NOT_FOUND', message: 'No result', details: {} } }, 404));
+      return Promise.reject(new Error(`unexpected request ${path}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    const firstRender = render(<App />);
+    await user.click(await screen.findByRole('button', { name: '开始测评' }));
+    await user.click(screen.getByRole('radio', { name: '4' }));
+    expect(await screen.findByRole('heading', { name: '问题 2' })).toBeInTheDocument();
+    await waitFor(() => expect(window.sessionStorage.length).toBe(1));
+    firstRender.unmount();
+
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: '问题 2' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '上一题' }));
+    expect(await screen.findByRole('heading', { name: '问题 1' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: '4' })).toBeChecked();
   });
 
   it('creates, validates, confirms and activates a server-calculated plan', async () => {

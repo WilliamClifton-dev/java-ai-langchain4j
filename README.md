@@ -11,8 +11,8 @@
 ## 工程亮点
 
 - **AI 系统边界**：业务事实（计划、打卡、复盘、测评）**只能由确定性服务**写入；模型通过 6 个**服务器授权工具**触达应用层。模型文本本身永远不是已保存的事实。
-- **16 个 ADR（ADR-001 ~ ADR-016）**：每一个技术选型都有书面理由——JWT 轮换、确定性 vs LLM 边界、Redis 临时状态、fail-fast 签名密钥、版本化健康计算等
-- **工程硬化（PR #1）**：ADR-016 fail-fast + 4 个契约测试；CI 6/6 通过（Backend / Frontend quality gates、Compose runtime smoke）
+- **架构决策记录**：记录 JWT 轮换、确定性 vs LLM 边界、Redis 临时状态、fail-fast 签名密钥和版本化健康计算等取舍
+- **质量门禁**：后端/前端质量检查、离线 AI/RAG 评估与依赖审计进入 GitHub Actions；PR 和 main 上的 Compose runtime smoke 阻塞失败
 - **可复现 L1 公共测试版**：docker-compose 一键起，k6 L1 容量门禁，备份/恢复演练，回滚演练，全部脚本化
 - **可观测性**：JSON 请求关联日志、关键流程审计、Micrometer 指标、独立健康探针
 - **6 类真实业务对话**：通用聊天 / 计划生成 / 每日打卡 / 每周复盘 / HBTI 解读 / 安全筛查，每类独立 Prompt 与工具集
@@ -42,6 +42,8 @@ Java 17 · Spring Boot 3.5 · LangChain4j 1.0 · MySQL 8 + MyBatis + Flyway · R
 - 前后端独立镜像、同源 Nginx 代理与可断言的 Compose 健康冒烟
 - 版本化 AI/RAG 评估、k6 L1 容量门禁、API 演示数据、备份恢复和回滚演练
 - 明确保留期限、每日清理任务、运营 Runbook 和机器可读发布清单
+
+最近一次仓库验证：后端 175 项测试通过（2 项跳过）、前端 33 项测试通过、前端生产构建成功；离线 AI/RAG 评估的 4 项定向测试通过。项目提供 Compose、k6、备份恢复和回滚脚本；具体负载结果、真实模型体验与公开部署状态请以带 commit SHA 的运行报告为准。参见[取证步骤](docs/RELEASE_EVIDENCE.md)和[项目状态](docs/PROJECT_STATUS_2026_09_18.md)。
 
 Web 关键流程、容器交付和 Task 23 发布证据已经实现。账户数据导出/删除、OpenAPI 路径契约和可重复执行的 OSV 依赖门禁也已实现。仓库达到可复现的 L1 公共测试版代码与演练标准；真正公开部署仍需提供 TLS、托管密钥、异地加密备份、告警和已发布镜像 digest 的平台证明。它不是企业级/L2 或受监管医疗产品。
 
@@ -160,6 +162,9 @@ src/main/resources/prompts/hbti/
 ## 文档
 
 - [AI 模型接力交接文档](docs/AI_HANDOFF.md)
+- [发布与体验取证步骤](docs/RELEASE_EVIDENCE.md)
+- [真实模型人工评估表](docs/AI_MODEL_EVALUATION.md)
+- [简历素材](docs/RESUME_HIGHLIGHTS.md)
 - [现行目标架构](docs/architecture/hbti-coach-architecture.md)
 - [L1 发布清单](docs/RELEASE_CHECKLIST.md)
 - [数据保留与备份策略](docs/operations/data-retention-and-backup.md)

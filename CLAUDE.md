@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-HBTI Coach is a Spring Boot 3.2.6 + LangChain4j 1.0.0-beta3 personal weight management assistant backend. It combines deterministic health calculations with AI coaching through a modular monolith architecture. The system uses MySQL 8 as the single source of truth, with Redis for ephemeral state.
+HBTI Coach is a Spring Boot 3.5.16 + Java 17 + LangChain4j 1.0.0-beta3 personal weight management assistant with a React frontend. It combines deterministic health calculations with AI coaching through a modular monolith architecture. The system uses MySQL 8 as the single source of truth, with Redis for ephemeral state.
 
 **Important**: HBTI is an exploratory behavioral tendency assessment, not a medical diagnosis or validated biological metabolic typing. All health calculations are planning estimates, not prescriptions.
 

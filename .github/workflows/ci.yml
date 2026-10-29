@@ -106,7 +106,7 @@ jobs:
     name: Compose runtime smoke
     needs: [backend, frontend]
     runs-on: ubuntu-latest
-    continue-on-error: true  # Allow this to fail without blocking the workflow
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v5
 

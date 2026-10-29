@@ -1313,6 +1313,66 @@ a {
   font-weight: 650;
 }
 
+.next-step-section {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.5fr);
+  gap: clamp(32px, 8vw, 110px);
+  padding-top: 58px;
+}
+
+.next-step-section h2 {
+  margin: 7px 0 10px;
+  font-size: 1.45rem;
+  letter-spacing: 0;
+}
+
+.next-step-lead {
+  max-width: 28rem;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.next-step-list {
+  display: grid;
+  border-top: 1px solid var(--line);
+}
+
+.next-step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 17px 0;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+}
+
+.next-step-item > svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+.next-step-item span {
+  display: grid;
+  gap: 4px;
+}
+
+.next-step-item strong {
+  font-size: 0.95rem;
+}
+
+.next-step-item small {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.next-step-item:hover strong {
+  color: var(--accent-strong);
+}
+
 .technical-value {
   color: #4d5850;
   font-family: "Cascadia Code", Consolas, monospace;
@@ -1361,6 +1421,12 @@ a {
   }
 
   .account-section {
+    grid-template-columns: 1fr;
+    gap: 22px;
+    padding-top: 44px;
+  }
+
+  .next-step-section {
     grid-template-columns: 1fr;
     gap: 22px;
     padding-top: 44px;

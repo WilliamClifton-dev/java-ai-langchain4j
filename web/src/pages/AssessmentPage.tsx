@@ -1,24 +1,71 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, CheckCircle2, RotateCcw } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
+import { useAuth } from '../auth/AuthContext';
 import type { HbtiDefinition, HbtiResult } from '../api/domain';
 import { api, isApiError } from '../api/http';
 
 const VERSION = '1.0.0';
 const SCALE = [1, 2, 3, 4, 5];
 
+function draftKey(userId: string) {
+  return `hbti-assessment-draft:${userId}:${VERSION}`;
+}
+
+interface AssessmentDraft {
+  answers: Record<string, number>;
+  questionIndex: number;
+  started: boolean;
+}
+
+function readDraft(key: string): AssessmentDraft | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Partial<AssessmentDraft>;
+    if (!value.started || !value.answers || typeof value.answers !== 'object'
+      || typeof value.questionIndex !== 'number' || !Number.isInteger(value.questionIndex)
+      || value.questionIndex < 0 || value.questionIndex > 15) return null;
+    const answers = Object.fromEntries(Object.entries(value.answers).filter(([key, answer]) =>
+      /^q(?:[1-9]|1[0-6])$/.test(key) && Number.isInteger(answer) && Number(answer) >= 1 && Number(answer) <= 5,
+    )) as Record<string, number>;
+    return { answers, questionIndex: value.questionIndex, started: true };
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(key: string, draft: AssessmentDraft) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(draft));
+  } catch {
+    // Draft recovery is best effort and must never block the questionnaire.
+  }
+}
+
+function clearDraft(key: string) {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {
+    // Ignore storage restrictions; the server submission remains authoritative.
+  }
+}
+
 function idempotencyKey() {
   return globalThis.crypto?.randomUUID?.() ?? `assessment-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 export function AssessmentPage() {
+  const { session } = useAuth();
   const queryClient = useQueryClient();
   const definitionQuery = useQuery({ queryKey: ['hbti', 'definition', VERSION], queryFn: () => api.getHbtiDefinition(VERSION) });
   const resultQuery = useQuery({ queryKey: ['hbti', 'result'], queryFn: api.getCurrentHbtiResult });
-  const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [questionIndex, setQuestionIndex] = useState(0);
-  const [started, setStarted] = useState(false);
+  const storageKey = draftKey(session!.user.id);
+  const [initialDraft] = useState(() => readDraft(storageKey));
+  const [answers, setAnswers] = useState<Record<string, number>>(() => initialDraft?.answers ?? {});
+  const [questionIndex, setQuestionIndex] = useState(() => initialDraft?.questionIndex ?? 0);
+  const [started, setStarted] = useState(() => initialDraft?.started ?? false);
   const [localResult, setLocalResult] = useState<HbtiResult | null>(null);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const submissionKey = useRef<string | null>(null);
@@ -30,8 +77,15 @@ export function AssessmentPage() {
       queryClient.setQueryData(['hbti', 'result'], response.result);
       setStarted(false);
       submissionKey.current = null;
+      clearDraft(storageKey);
     },
   });
+
+  useEffect(() => {
+    if (started && Object.keys(answers).length > 0) {
+      writeDraft(storageKey, { answers, questionIndex, started });
+    }
+  }, [answers, questionIndex, started, storageKey]);
 
   const definition = definitionQuery.data;
   const result = localResult ?? resultQuery.data;
@@ -63,7 +117,7 @@ export function AssessmentPage() {
   }
 
   if (result && !started) {
-    return <ResultView result={result} definition={definition!} onRetake={() => { setAnswers({}); setQuestionIndex(0); setLocalResult(null); setStarted(true); }} />;
+    return <ResultView result={result} definition={definition!} onRetake={() => { clearDraft(storageKey); setAnswers({}); setQuestionIndex(0); setLocalResult(null); setStarted(true); }} />;
   }
 
   return (

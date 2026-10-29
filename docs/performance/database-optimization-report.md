@@ -1,5 +1,7 @@
 # Database Performance Optimization Report
 
+> Historical analysis dated 2026-09-17. Latency, row-count, storage and capacity figures below include estimates or targets and are not a measured benchmark. Do not cite them as achieved results; use the commit-bound procedure in [RELEASE_EVIDENCE.md](../RELEASE_EVIDENCE.md) for current measurements.
+
 ## Date
 2026-09-17
 
