@@ -727,6 +727,17 @@ a {
   border-block: 1px solid var(--line);
 }
 
+.question-resume-note {
+  display: inline-flex;
+  margin: 0 0 16px;
+  padding: 6px 9px;
+  color: #694d24;
+  background: #f7eddc;
+  border-left: 2px solid var(--ochre);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 .question-block h2 {
   max-width: 42rem;
   margin: 10px 0 42px;

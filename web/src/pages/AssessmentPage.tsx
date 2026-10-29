@@ -63,6 +63,7 @@ export function AssessmentPage() {
   const resultQuery = useQuery({ queryKey: ['hbti', 'result'], queryFn: api.getCurrentHbtiResult });
   const storageKey = draftKey(session!.user.id);
   const [initialDraft] = useState(() => readDraft(storageKey));
+  const hasRecoveredDraft = Boolean(initialDraft);
   const [answers, setAnswers] = useState<Record<string, number>>(() => initialDraft?.answers ?? {});
   const [questionIndex, setQuestionIndex] = useState(() => initialDraft?.questionIndex ?? 0);
   const [started, setStarted] = useState(() => initialDraft?.started ?? false);
@@ -136,6 +137,7 @@ export function AssessmentPage() {
           <div className="progress-meta"><span>问题 {questionIndex + 1} / {definition!.items.length}</span><span>{Math.round(((questionIndex + 1) / definition!.items.length) * 100)}%</span></div>
           <div className="progress-track"><span style={{ width: `${((questionIndex + 1) / definition!.items.length) * 100}%` }} /></div>
           <div className="question-block">
+            {hasRecoveredDraft && <p className="question-resume-note" role="status">已恢复上次未完成的进度</p>}
             <p className="eyebrow">{item?.hintZh}</p><h2 id="question-title">{item?.titleZh}</h2>
             {item?.itemKey === 'q4' && <p className="question-explanation">这里的“反应特别强”是指：看到或吃到这类食物后，容易产生明显的想吃、继续吃或优先选择它们的冲动。</p>}
             <fieldset className="scale-fieldset"><legend>符合程度</legend><div className="scale-options">{SCALE.map((value) => <label className={answers[item!.itemKey] === value ? 'scale-option selected' : 'scale-option'} key={value}><input type="radio" name={item!.itemKey} value={value} checked={answers[item!.itemKey] === value} onChange={() => choose(value)} /><span>{value}</span></label>)}</div><div className="scale-legend"><span>完全不符合</span><span>非常符合</span></div></fieldset>

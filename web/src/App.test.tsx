@@ -242,6 +242,7 @@ describe('account experience', () => {
 
     render(<App />);
     expect(await screen.findByRole('heading', { name: '问题 2' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('已恢复上次未完成的进度');
     await user.click(screen.getByRole('button', { name: '上一题' }));
     expect(await screen.findByRole('heading', { name: '问题 1' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: '4' })).toBeChecked();
