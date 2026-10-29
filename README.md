@@ -43,7 +43,7 @@ Java 17 · Spring Boot 3.5 · LangChain4j 1.0 · MySQL 8 + MyBatis + Flyway · R
 - 版本化 AI/RAG 评估、k6 L1 容量门禁、API 演示数据、备份恢复和回滚演练
 - 明确保留期限、每日清理任务、运营 Runbook 和机器可读发布清单
 
-最近一次仓库验证：后端 175 项测试通过（2 项跳过）、前端 33 项测试通过、前端生产构建成功；离线 AI/RAG 评估的 4 项定向测试通过。项目提供 Compose、k6、备份恢复和回滚脚本；具体负载结果、真实模型体验与公开部署状态请以带 commit SHA 的运行报告为准。参见[取证步骤](docs/RELEASE_EVIDENCE.md)和[项目状态](docs/PROJECT_STATUS_2026_09_18.md)。
+当前验证状态和测试数量见[项目状态报告](docs/PROJECT_STATUS_2026_09_18.md)。仓库提供 Compose、k6、备份恢复和回滚脚本；具体负载结果、真实模型体验与公开部署状态只以绑定 commit SHA 的运行报告为准。参见[取证步骤](docs/RELEASE_EVIDENCE.md)。
 
 Web 关键流程、容器交付和 Task 23 发布证据已经实现。账户数据导出/删除、OpenAPI 路径契约和可重复执行的 OSV 依赖门禁也已实现。仓库达到可复现的 L1 公共测试版代码与演练标准；真正公开部署仍需提供 TLS、托管密钥、异地加密备份、告警和已发布镜像 digest 的平台证明。它不是企业级/L2 或受监管医疗产品。
 

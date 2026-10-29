@@ -4,6 +4,8 @@
 > Repository: `D:\Projects\java-ai-langchain4j`
 > Branch: `codex/hbti-platform`
 > Handoff baseline: current branch HEAD; verify with `git rev-parse HEAD`
+>
+> Historical handoff snapshot. The task plan, branch and test counts below describe the 2026-08-18 state only; see [current project status](PROJECT_STATUS_2026_09_18.md) for verified evidence.
 
 ## 1. Prompt For The Next Model
 

@@ -34,7 +34,7 @@ MySQL 作为事实源，Flyway 采用追加式迁移；用户拥有的数据在�
 
 ### 3.3 测试覆盖了高风险路径
 
-测试不仅验证普通成功路径，还覆盖了认证与令牌轮换、资源归属、幂等、工具授权、流式超时/熔断/取消、模型故障隔离、知识检索、数据清理、OpenAPI 契约和迁移。当前本地实测结果为：后端 175 个测试，0 失败、0 错误、2 个跳过；前端 4 个测试文件、32 个测试全部通过；前端生产构建成功。
+测试不仅验证普通成功路径，还覆盖了认证与令牌轮换、资源归属、幂等、工具授权、流式超时/熔断/取消、模型故障隔离、知识检索、数据清理、OpenAPI 契约和迁移。该复盘对应的当时记录为后端 175 个测试（2 个跳过）、前端 32 个测试和前端生产构建通过；这些数字是 2026-09-18 的历史快照，不代表当前主线结果。
 
 ### 3.4 文档和运行手册形成了连续链路
 
@@ -48,7 +48,7 @@ ADR、架构文档、API 示例、故障排查、部署最佳实践、数据保�
 
 ### 4.2 非阻塞 Compose smoke 会削弱交付信号
 
-CI 中 `compose-smoke` 设置了 `continue-on-error: true`。这适合避免环境偶发问题阻塞开发，但会让镜像、网络、健康检查或跨容器配置回归无法阻止合并。应保留非阻塞诊断任务，同时增加定时或发布分支上的阻塞运行，并定义失败预算和责任人。
+当时 CI 中 `compose-smoke` 设置了 `continue-on-error: true`。当前已调整为 Pull Request 和 `main` 上阻塞失败，普通 feature branch push 不运行；后续应根据失败证据修复环境问题，而不是弱化发布门禁。
 
 ### 4.3 版本升级债务应从“评估”进入执行
 
@@ -56,7 +56,7 @@ Spring Boot 3.5 已 EOL，升级评估文档已经完成，但实际主线仍是
 
 ### 4.4 当前工作区改动需要尽快收口
 
-未提交改动包括生产配置校验、HTTP 安全响应头、Coach 内存策略集中化、知识检索策略集中化、MySQL 性能索引和测试 profile 修复。这些改动方向合理，但在提交前缺少一个明确的变更边界和回归记录。尤其是生产配置验证器会在 `prod/production` profile 检查 HTTPS CORS、安全 Cookie、签名密钥和 Redis 可用性，应补齐专门的单元/启动契约测试后再合入。
+复盘时未提交改动包括生产配置校验、HTTP 安全响应头、Coach 内存策略集中化、知识检索策略集中化、MySQL 性能索引和测试 profile 修复。后续分支已为这些改动补充定向测试；当前实现和证据见项目状态报告与最新 CI。
 
 ### 4.5 指标需要从静态承诺转向持续采集
 
@@ -111,4 +111,4 @@ Spring Boot 3.5 已 EOL，升级评估文档已经完成，但实际主线仍是
 - 部署与排障：[DEPLOYMENT_BEST_PRACTICES.md](DEPLOYMENT_BEST_PRACTICES.md)、[TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 - 发布和恢复：[RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)、[operations/release-and-rollback.md](operations/release-and-rollback.md)、[operations/database-recovery.md](operations/database-recovery.md)
 - CI 工作流：[ci.yml](../.github/workflows/ci.yml)
-- 本次本地验证：`mvn test`（175 tests，0 failures，0 errors，2 skipped）、`web/npm test -- --run`（32 tests passed）、`web/npm run build`（成功）
+- 当时本地验证：`mvn test`（175 tests，0 failures，0 errors，2 skipped）、`web/npm test -- --run`（32 tests passed）、`web/npm run build`（成功）。当前结果见项目状态报告。

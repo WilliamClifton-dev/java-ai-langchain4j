@@ -17,6 +17,7 @@ interface AssessmentDraft {
   answers: Record<string, number>;
   questionIndex: number;
   started: boolean;
+  submissionKey?: string;
 }
 
 function readDraft(key: string): AssessmentDraft | null {
@@ -30,7 +31,11 @@ function readDraft(key: string): AssessmentDraft | null {
     const answers = Object.fromEntries(Object.entries(value.answers).filter(([key, answer]) =>
       /^q(?:[1-9]|1[0-6])$/.test(key) && Number.isInteger(answer) && Number(answer) >= 1 && Number(answer) <= 5,
     )) as Record<string, number>;
-    return { answers, questionIndex: value.questionIndex, started: true };
+    const submissionKey = typeof value.submissionKey === 'string'
+      && value.submissionKey.length > 0 && value.submissionKey.length <= 200
+      ? value.submissionKey
+      : undefined;
+    return { answers, questionIndex: value.questionIndex, started: true, submissionKey };
   } catch {
     return null;
   }
@@ -69,7 +74,7 @@ export function AssessmentPage() {
   const [started, setStarted] = useState(() => initialDraft?.started ?? false);
   const [localResult, setLocalResult] = useState<HbtiResult | null>(null);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
-  const submissionKey = useRef<string | null>(null);
+  const submissionKey = useRef<string | null>(initialDraft?.submissionKey ?? null);
 
   const submitMutation = useMutation({
     mutationFn: () => api.submitHbti(VERSION, Object.entries(answers).map(([itemKey, value]) => ({ itemKey, value })), submissionKey.current ?? (submissionKey.current = idempotencyKey())),
@@ -84,7 +89,7 @@ export function AssessmentPage() {
 
   useEffect(() => {
     if (started && Object.keys(answers).length > 0) {
-      writeDraft(storageKey, { answers, questionIndex, started });
+      writeDraft(storageKey, { answers, questionIndex, started, submissionKey: submissionKey.current ?? undefined });
     }
   }, [answers, questionIndex, started, storageKey]);
 
@@ -97,6 +102,7 @@ export function AssessmentPage() {
 
   function choose(value: number) {
     if (!item) return;
+    if (answers[item.itemKey] !== value) submissionKey.current = null;
     setAnswers((current) => ({ ...current, [item.itemKey]: value }));
     setValidationMessage(null);
     if (questionIndex < definition!.items.length - 1) {
@@ -109,6 +115,8 @@ export function AssessmentPage() {
       setValidationMessage('请选择一个最符合当前情况的选项');
       return;
     }
+    const key = submissionKey.current ?? (submissionKey.current = idempotencyKey());
+    writeDraft(storageKey, { answers, questionIndex, started, submissionKey: key });
     submitMutation.mutate();
   }
 
@@ -118,7 +126,7 @@ export function AssessmentPage() {
   }
 
   if (result && !started) {
-    return <ResultView result={result} definition={definition!} onRetake={() => { clearDraft(storageKey); setAnswers({}); setQuestionIndex(0); setLocalResult(null); setStarted(true); }} />;
+    return <ResultView result={result} definition={definition!} onRetake={() => { clearDraft(storageKey); submissionKey.current = null; setAnswers({}); setQuestionIndex(0); setLocalResult(null); setStarted(true); }} />;
   }
 
   return (

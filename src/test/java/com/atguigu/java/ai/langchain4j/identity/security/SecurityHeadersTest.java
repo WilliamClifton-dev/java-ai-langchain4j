@@ -42,4 +42,11 @@ class SecurityHeadersTest {
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"))
                 .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
     }
+
+    @Test
+    void sendsHstsOnSecureRequests() throws Exception {
+        mockMvc.perform(get("/api/v1/auth/csrf").secure(true))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Strict-Transport-Security", "max-age=31536000 ; includeSubDomains"));
+    }
 }

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "GHSA-j9f9-w8pj-32f8",
+    "package": "org.springframework:spring-webmvc",
+    "reviewBy": "2027-01-31T00:00:00Z",
+    "advisoryUrl": "https://spring.io/security/cve-2026-47890",
+    "requiredConditionAbsent": "The affected path requires Server-Sent Events rendered with view fragments.",
+    "rationale": "CoachController streams through SseEmitterCoachEventSink, which sends JSON event data directly; no view fragment rendering is configured. Revisit during Spring Boot 4 migration."
+  },
+  {
+    "id": "GHSA-pc63-qcmh-9cmg",
+    "package": "org.springframework:spring-webmvc",
+    "reviewBy": "2027-01-31T00:00:00Z",
+    "advisoryUrl": "https://spring.io/security/cve-2026-47884",
+    "requiredConditionAbsent": "The affected path requires XsltView and an /** view-rendering mapping without an explicit view name.",
+    "rationale": "The application has no XsltView, view resolver, or catch-all MVC view route. Revisit during Spring Boot 4 migration."
+  }
+]

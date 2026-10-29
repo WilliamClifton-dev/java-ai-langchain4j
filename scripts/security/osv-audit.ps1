@@ -10,6 +10,7 @@ $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $outputDirectory = Join-Path $repositoryRoot 'target\security'
 $dependencyFile = Join-Path $outputDirectory 'runtime-dependencies.txt'
 $reportFile = Join-Path $outputDirectory 'osv-report.json'
+$exceptionsPath = Join-Path $repositoryRoot 'config/security/osv-reachability-exceptions.json'
 $severityRank = @{
     UNKNOWN = 5
     LOW = 1
@@ -122,12 +123,29 @@ $findings = @($matches | ForEach-Object {
     }
 })
 
+$exceptions = @(Get-Content -Raw -LiteralPath $exceptionsPath | ConvertFrom-Json)
+$today = (Get-Date).ToUniversalTime().Date
+$findings = @($findings | ForEach-Object {
+    $finding = $_
+    $exception = @($exceptions | Where-Object {
+        $_.id -eq $finding.id -and $_.package -eq $finding.package -and
+        -not [string]::IsNullOrWhiteSpace($_.rationale) -and
+        -not [string]::IsNullOrWhiteSpace($_.advisoryUrl) -and
+        -not [string]::IsNullOrWhiteSpace($_.requiredConditionAbsent) -and
+        [DateTime]::Parse($_.reviewBy).ToUniversalTime().Date -ge $today
+    }) | Select-Object -First 1
+    $finding | Add-Member -NotePropertyName disposition -NotePropertyValue `
+        $(if ($null -ne $exception) { 'documented_non_reachable' } else { 'blocking' }) -PassThru
+})
+
 $report = [ordered]@{
     generatedAtUtc = (Get-Date).ToUniversalTime().ToString('o')
     source = 'https://api.osv.dev/v1/querybatch'
     dependencyScope = 'runtime'
     dependencyCount = $dependencies.Count
     findingCount = $findings.Count
+    blockingFindingCount = @($findings | Where-Object disposition -eq 'blocking').Count
+    documentedExceptions = @($findings | Where-Object disposition -eq 'documented_non_reachable')
     failOn = $FailOn
     findings = $findings
 }
@@ -135,14 +153,20 @@ $report | ConvertTo-Json -Depth 10 | Set-Content $reportFile -Encoding utf8
 
 $counts = $findings | Group-Object severity | Sort-Object Name
 Write-Host "OSV runtime audit: dependencies=$($dependencies.Count), findings=$($findings.Count)"
+Write-Host "Blocking findings: $(@($findings | Where-Object disposition -eq 'blocking').Count); documented non-reachable: $(@($findings | Where-Object disposition -eq 'documented_non_reachable').Count)"
 foreach ($count in $counts) {
     Write-Host "$($count.Name)=$($count.Count)"
+}
+foreach ($finding in @($findings | Where-Object disposition -eq 'documented_non_reachable')) {
+    Write-Host "Documented exception: $($finding.id) ($($finding.package) $($finding.version))"
 }
 Write-Host "Report: $reportFile"
 
 $threshold = $severityRank[$FailOn]
 $blocking = @($findings | Where-Object {
+    $_.disposition -eq 'blocking' -and (
     -not $severityRank.ContainsKey($_.severity) -or $severityRank[$_.severity] -ge $threshold
+    )
 })
 if ($blocking.Count -gt 0) {
     $blocking | Sort-Object severity, package, id | Format-Table severity, package, version, id -AutoSize

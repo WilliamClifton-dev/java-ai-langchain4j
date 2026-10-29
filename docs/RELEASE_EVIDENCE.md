@@ -21,6 +21,8 @@ npm --prefix web run build
 
 报告在 `target/release-evidence/` 与 `target/compose-smoke/`。检查每份报告的 `gitCommit` 是否等于待发布 commit，并一并记录运行主机规格、Docker 版本和时间。k6 的 20 RPS / 100 RPS 是测试负载配置，不代表相同规模的真实用户或容量承诺。
 
+依赖审计会把可达性已核对、但当前框架分支没有修复版本的 advisory 写入 `documented_non_reachable` 例外，并要求在 `config/security/osv-reachability-exceptions.json` 的 `reviewBy` 前复核。例外不会隐藏在报告外，也不覆盖同一依赖的其他漏洞。
+
 ## 真实模型评估
 
 离线 AI/RAG 评估不验证真实模型回答质量。真实模型评估需配置模型供应商密钥和固定模型版本，再按 [AI_MODEL_EVALUATION.md](AI_MODEL_EVALUATION.md) 对 manifest 中所有必测场景运行并人工评分。

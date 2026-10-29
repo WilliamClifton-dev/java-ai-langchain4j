@@ -35,10 +35,9 @@ CREATE INDEX idx_nutrition_log_user_date ON nutrition_log (user_id, local_date);
 **Files Modified:**
 - `src/main/resources/db/migration/V14__index_tracking_queries.sql`
 
-**Expected Impact:**
-- Query execution time: O(n) → O(log n + k) where k = matching rows
-- For typical 7-day windows: reduces execution from full table scan to index range scan
-- p95 latency improvement estimated at 60-80% for weekly review generation
+**Expected Impact (not benchmarked):**
+- The composite index gives MySQL an index range scan option for the user/date predicate; the actual query plan depends on data distribution and must be checked with `EXPLAIN`.
+- No before/after latency measurement is recorded for this change.
 
 **Evidence Location:**
 - Migration: `V14__index_tracking_queries.sql`
@@ -76,11 +75,9 @@ CREATE INDEX idx_coach_conversation_retention ON coach_conversation (last_messag
 - `src/main/java/com/atguigu/java/ai/langchain4j/store/CoachMessageMapper.java`
 - `src/main/java/com/atguigu/java/ai/langchain4j/store/CoachConversationOwnershipMapper.java`
 
-**Expected Impact:**
-- Prevents unbounded growth of conversation data
-- Typical retention: ~3 months of active conversations per user
-- Storage savings: estimated 40-60% reduction after 6 months of operation
-- Backup size reduction: proportional to conversation cleanup
+**Expected Impact (not benchmarked):**
+- Retention bounds eligible conversation history according to configured policy.
+- Storage and backup reductions have not been measured.
 
 **Configuration:**
 ```properties
@@ -135,9 +132,9 @@ Flyway migrations apply cleanly on H2 test database:
 **Note:** Detailed profiling with JProfiler/VisualVM and k6 load testing should be performed to establish concrete baseline metrics. The following are estimates based on query complexity analysis.
 
 ### Weekly Review Generation
-- **Current behavior:** Three table scans per review
-- **Estimated latency:** 200-800ms depending on table size
-- **Bottleneck:** Full table scans on tracking tables
+- **Current behavior:** Three date-range queries per review.
+- **Bottleneck hypothesis:** Table scans may occur when the optimizer cannot use a selective index; verify using representative data and `EXPLAIN`.
+- No latency baseline is recorded.
 
 ### Conversation Growth
 - **Current behavior:** No cleanup, indefinite retention
@@ -149,9 +146,8 @@ Flyway migrations apply cleanly on H2 test database:
 ## Expected Performance (After Optimization)
 
 ### Query Performance
-- **Weekly review latency:** 80-300ms (60-80% reduction)
-- **Index selectivity:** High (user_id + date range typically returns <100 rows)
-- **Scalability:** Supports 10,000+ users without degradation
+- No post-change latency or capacity result is recorded.
+- Index use, selectivity and query latency must be measured with representative data before making capacity claims.
 
 ### Storage Management
 - **Conversation retention:** Steady state after 90 days
@@ -166,7 +162,7 @@ Flyway migrations apply cleanly on H2 test database:
 - [ ] Run k6 load tests and capture p50/p95/p99 latency before and after
 - [ ] Profile weekly review generation with JProfiler
 - [ ] Measure MySQL slow query log for tracking table queries
-- [ ] Document concrete performance improvements in this report
+- [ ] Document measured performance changes in this report, including environment, dataset, query plan and commit SHA
 
 ### 2. Index Usage Verification (Medium Priority)
 - [ ] Run EXPLAIN on weekly review queries in production

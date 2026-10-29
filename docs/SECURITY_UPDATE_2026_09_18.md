@@ -1,5 +1,7 @@
 # Security Update - September 18, 2026
 
+> Historical snapshot from 2026-09-18. Its test and audit results apply only to that commit; current dependency evidence is recorded in [PROJECT_STATUS_2026_09_18.md](PROJECT_STATUS_2026_09_18.md).
+
 ## Summary
 
 Updated critical dependencies to address security vulnerabilities identified in OSV audit.

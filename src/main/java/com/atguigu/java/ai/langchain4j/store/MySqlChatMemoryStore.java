@@ -1,5 +1,6 @@
 package com.atguigu.java.ai.langchain4j.store;
 
+import com.atguigu.java.ai.langchain4j.coach.CoachMemoryPolicy;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageDeserializer;
 import dev.langchain4j.data.message.ChatMessageSerializer;
@@ -12,8 +13,6 @@ import java.util.List;
 
 @Component
 public class MySqlChatMemoryStore implements ChatMemoryStore {
-
-    private static final int MAX_MEMORY_ID_LENGTH = 128;
 
     private final CoachMessageMapper mapper;
 
@@ -74,8 +73,9 @@ public class MySqlChatMemoryStore implements ChatMemoryStore {
         if (normalized.isEmpty()) {
             throw new IllegalArgumentException("Memory ID is required");
         }
-        if (normalized.length() > MAX_MEMORY_ID_LENGTH) {
-            throw new IllegalArgumentException("Memory ID must not exceed 128 characters");
+        if (normalized.length() > CoachMemoryPolicy.MAX_MEMORY_ID_LENGTH) {
+            throw new IllegalArgumentException(
+                    "Memory ID must not exceed " + CoachMemoryPolicy.MAX_MEMORY_ID_LENGTH + " characters");
         }
         return normalized;
     }

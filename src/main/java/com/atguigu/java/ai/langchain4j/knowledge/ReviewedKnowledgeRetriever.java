@@ -18,10 +18,11 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.atguigu.java.ai.langchain4j.knowledge.KnowledgeRetrievalPolicy.*;
+
 @Component("reviewedKnowledgeRetriever")
 public class ReviewedKnowledgeRetriever implements ContentRetriever {
     private static final Pattern TERM = Pattern.compile("[\\p{IsHan}]+|[\\p{L}\\p{N}]{2,}");
-    private static final double MIN_SCORE = 0.20;
 
     private final KnowledgeMapper mapper;
 
@@ -30,8 +31,9 @@ public class ReviewedKnowledgeRetriever implements ContentRetriever {
     }
 
     public List<KnowledgePassage> search(String query, String locale, int maxResults) {
-        if (query == null || query.isBlank() || query.length() > 500 || locale == null
-                || locale.isBlank() || locale.length() > 16 || maxResults < 1 || maxResults > 5) {
+        if (query == null || query.isBlank() || query.length() > MAX_QUERY_LENGTH
+                || locale == null || locale.isBlank() || locale.length() > MAX_LOCALE_LENGTH
+                || maxResults < 1 || maxResults > MAX_RESULTS) {
             return List.of();
         }
         Set<String> queryTerms = terms(query);
@@ -41,7 +43,7 @@ public class ReviewedKnowledgeRetriever implements ContentRetriever {
             Set<String> contentTerms = terms(row.content());
             long matches = queryTerms.stream().filter(contentTerms::contains).count();
             double score = (double) matches / queryTerms.size();
-            if (matches > 0 && score >= MIN_SCORE) {
+            if (matches > 0 && score >= MIN_MATCH_SCORE) {
                 candidates.add(new KnowledgePassage(row.content(), new KnowledgeCitation(
                         row.sourceKey(), row.title(), row.sourceUrl(), row.publisher(), row.locale(),
                         row.versionNo(), row.versionContentHash(), row.retrievedAt()

@@ -56,6 +56,10 @@ public class SecurityConfig {
                         .contentSecurityPolicy(csp -> csp
                                 .policyDirectives("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"))
                         .frameOptions(frame -> frame.deny())
+                        .contentTypeOptions(contentType -> {})  // X-Content-Type-Options: nosniff
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .maxAgeInSeconds(31536000)  // 1 year
+                                .includeSubDomains(true))
                 )
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf").permitAll()
