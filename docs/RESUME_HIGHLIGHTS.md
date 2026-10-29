@@ -21,6 +21,7 @@
 - 实现 Cookie JWT、刷新令牌轮换、CSRF、资源归属、审计日志、SSE 流式超时/取消/熔断和 Redis 临时状态策略。
 - 建立默认离线质量门禁，涵盖后端业务/迁移测试、前端交互测试与生产构建；使用 H2 和 Mock 模型，不依赖外部数据库或模型服务。当前测试数量见[项目状态报告](PROJECT_STATUS_2026_09_18.md)。
 - 提供离线 AI/RAG 安全评估、Docker Compose 健康冒烟、k6 L1 负载、备份恢复和回滚脚本；实际发布指标以 `target/release-evidence/` 中的运行报告为准。
+- 在绑定 commit 的本地 L1 报告中验证 20 RPS 持续和 100 RPS 突发的 0 错误、0 dropped iterations；简历应同时注明这是固定 Docker 环境基线，不写成生产容量承诺。
 
 ## 面试时可以展开的三个决策
 

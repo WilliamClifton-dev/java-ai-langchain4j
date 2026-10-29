@@ -16,15 +16,15 @@
 | AI/RAG 离线评估 | Offline runner 通过 4 项定向测试；校验 manifest、prompt hash、检索容量和安全边界 |
 | 容器交付 | Compose smoke 通过：4 个服务健康、readiness 与同源代理正常，backend/web 非 root 运行 |
 | 依赖审计 | npm audit：0 vulnerabilities；OSV runtime：0 项阻塞发现、2 项有代码路径依据的 Spring 例外，见审计报告与[例外清单](../config/security/osv-reachability-exceptions.json) |
-| 备份恢复 | fresh-volume restore 通过；比对 21 张表，0 行差异，MySQL restore 用时 23.083 秒 |
-| 回滚 | 无效候选在切流前被拒绝（6.606 秒）；已知良好镜像 readiness 于 12.561 秒后恢复 |
-| 性能 | k6 L1 脚本已提供；本次尚未运行，不引用容量和延迟结论 |
+| 备份恢复 | final SHA fresh-volume restore 通过；比对 21 张表，0 行差异，MySQL restore 用时 26.076 秒 |
+| 回滚 | final SHA 无效候选在切流前被拒绝（6.772 秒）；已知良好镜像 readiness 于 12.646 秒后恢复 |
+| 性能 | final SHA 固定本机 L1：20 RPS 持续、100 RPS 突发均 0 错误/0 dropped；持续 p95 6.18 ms、p99 51.79 ms，突发 p95 3.25 ms、p99 4.31 ms |
 
 后端 2 项跳过分别是 OpenAPI schema dump 需要显式系统属性，以及真实模型 smoke 需要显式启用外部测试；均非失败。
 
 ## 尚未声称已完成
 
-- 本次本地未运行 k6、真实模型和公开部署；执行后才可引用 p50/p95/p99、错误率和首 token 延迟。
+- 本次本地未运行真实模型和公开部署；k6 数字仅适用于报告中的 Windows/Docker 固定环境、数据规模和负载脚本，不能推导生产容量或用户规模。
 - 公开部署还缺 TLS、托管密钥、异地加密备份、告警、镜像 digest 和平台侧 SLO 证据。
 - Spring Boot 3.5.16 已到支持周期末；升级评估存在，但 Boot 4 迁移尚未完成。当前 Spring Framework 两项 OSV 例外依赖具体路由/渲染前提，例外有期限并需复核，不能视作框架仍受支持。
 - 真实模型的人工质量评分、模型版本、首 token 延迟和成本尚无报告。
